@@ -1,0 +1,17 @@
+[project]
+name = "medical-data-agent"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "katalria",email = "wawa0070@naver.com"}
+]
+readme = "README.md"
+requires-python = "3.11.7"
+dependencies = [
+    "pandas (>=2.3.1,<3.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

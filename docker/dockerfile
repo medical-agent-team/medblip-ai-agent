@@ -22,6 +22,7 @@ COPY pyproject.toml poetry.lock* ./
 # .venv을 컨태이너 내부에 생성
 RUN poetry config virtualenvs.create true \
  && poetry config virtualenvs.in-project true \
+ && poetry config virtualenvs.path /opt/venv \
  && poetry install --no-interaction --no-ansi --no-root
 
 # ---------- api ----------
@@ -59,5 +60,4 @@ COPY app/ ./app/
 RUN /opt/venv/bin/python -m pip install --no-cache-dir jupyterlab
 
 EXPOSE 8888
-# CMD ["/opt/venv/bin/jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root", "--NotebookApp.token=", "--NotebookApp.disable_check_xsrf=True"]
-CMD ["sleep", "infinity"]
+CMD ["/opt/venv/bin/jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root", "--NotebookApp.token=", "--NotebookApp.disable_check_xsrf=True"]

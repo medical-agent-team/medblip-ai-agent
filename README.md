@@ -6,7 +6,7 @@
 # poetry 설치방법
 
 # BLIP(finetuned) 사용방법
-BLIP model 다운: https://drive.google.com/file/d/1ZxWOffhTbLqCAhn_Wz1kCZywpvHW_6x2/view?usp=sharing
+BLIP model 다운: https://drive.google.com/file/d/1oUPOfLp_wH78ywdjhZ173C9RMNrhBziu/view?usp=drive_link
 
 folder에다가 저장 -> 예시: /blip_model_finetuned
 ```python

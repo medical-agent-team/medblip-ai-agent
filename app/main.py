@@ -29,11 +29,7 @@ def load_medblip_model():
     
     # 가능한 모델 경로들 (우선순위 순)
     possible_paths = [
-        "/app/model/blip_model_finetuned",  # Docker 컨테이너 내부 경로
-        "/app/blip_model_finetuned",        # 루트 디렉토리
-        "./model/blip_model_finetuned",     # 상대 경로 1
-        "./blip_model_finetuned",           # 원래 경로
-        "blip_model_finetuned"              # 현재 디렉토리
+        "/app/model/model.safetensors",  # Docker 컨테이너 내부 경로
     ]
     
     for model_path in possible_paths:
@@ -57,8 +53,7 @@ def load_medblip_model():
     MedBLIP 모델을 찾을 수 없습니다. 다음을 확인해주세요:
     
     1. 모델 파일이 다음 경로 중 하나에 있는지 확인:
-       - /app/model/blip_model_finetuned/
-       - /app/blip_model_finetuned/
+       - /app/model/
        
     2. 모델 디렉토리에 다음 파일들이 있는지 확인:
        - config.json

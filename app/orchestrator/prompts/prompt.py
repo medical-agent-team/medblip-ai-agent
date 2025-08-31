@@ -50,6 +50,7 @@ RADIOLOGY_ANALYSIS_PROMPT = ChatPromptTemplate.from_messages(
     ]
 )
 
+
 ORCHESTRATOR_AGENT_PROMPT = ChatPromptTemplate.from_messages(
     [SystemMessagePromptTemplate.from_template(
         """
@@ -86,6 +87,7 @@ ORCHESTRATOR_AGENT_PROMPT = ChatPromptTemplate.from_messages(
         DECISION: [위 옵션 중 하나]
         REASON: [선택 이유]
         MESSAGE: [사용자에게 전달할 메시지]
+
         """
     ),
     HumanMessagePromptTemplate.from_template(
@@ -94,6 +96,7 @@ ORCHESTRATOR_AGENT_PROMPT = ChatPromptTemplate.from_messages(
         [Context] 
         현재 대화 단계: {conversation_stage}
         수집된 정보: {collected_info}
+
         이미지 첨부 여부: {has_image}
         이전 대화 내용: {conversation_history}
         """

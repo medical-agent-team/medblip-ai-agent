@@ -11,8 +11,8 @@ BLIP model 다운: https://drive.google.com/file/d/1oUPOfLp_wH78ywdjhZ173C9RMNrh
 folder에다가 저장 -> 예시: /blip_model_finetuned
 ```python
 from PIL import Image
-
 from transformers import BlipForConditionalGeneration, BlipProcessor
+
 model = BlipForConditionalGeneration.from_pretrained("./blip_model_finetuned")
 processor = BlipProcessor.from_pretrained("./blip_model_finetuned")
 

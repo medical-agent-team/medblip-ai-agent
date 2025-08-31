@@ -30,6 +30,7 @@ def load_medblip_model():
     # 가능한 모델 경로들 (우선순위 순)
     possible_paths = [
         "/app/model",  # Docker 컨테이너 내부 경로
+
     ]
     
     for model_path in possible_paths:

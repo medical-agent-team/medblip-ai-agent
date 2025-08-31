@@ -22,7 +22,6 @@ COPY pyproject.toml poetry.lock* ./
 # .venv을 컨태이너 내부에 생성
 RUN poetry config virtualenvs.create true \
  && poetry config virtualenvs.in-project true \
- && poetry config virtualenvs.path /opt/venv \
  && poetry install --no-interaction --no-ansi --no-root
 
 # ---------- api ----------
@@ -30,15 +29,15 @@ FROM python:3.11.7-slim AS api
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PATH="/opt/venv/bin:$PATH"
+    PATH="/app/.venv/bin:$PATH"
 
 WORKDIR /app
 
 # 빌더에서 만든 가상환경 복사
-COPY --from=builder /app/.venv /opt/venv
+COPY --from=builder /app/.venv /app/.venv
 COPY app/ ./app/
 # 프로덕션에 필요한 런타임만 추가
-RUN /opt/venv/bin/python -m pip install --no-cache-dir "uvicorn[standard]"
+RUN /app/.venv/bin/python -m pip install --no-cache-dir "uvicorn[standard]"
 
 EXPOSE 8000
 # CMD ["/opt/venv/bin/uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
@@ -54,10 +53,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-COPY --from=builder /app/.venv /opt/venv
+COPY --from=builder /app/.venv /app/.venv
 COPY app/ ./app/
 
-RUN /opt/venv/bin/python -m pip install --no-cache-dir jupyterlab
+RUN /app/.venv/bin/python -m pip install --no-cache-dir jupyterlab
 
 EXPOSE 8888
-CMD ["/opt/venv/bin/jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root", "--NotebookApp.token=", "--NotebookApp.disable_check_xsrf=True"]
+CMD ["/app/.venv/bin/jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root", "--NotebookApp.token=", "--NotebookApp.disable_check_xsrf=True"]

@@ -40,6 +40,7 @@ services:
     user: root       
     ports:
       - "8888:8888"
+      - "8501:8501"
     volumes:
       # 프로젝트 소스 코드만 마운트 (Poetry 관련 파일 제외)
       # - ../app:/app/

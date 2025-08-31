@@ -43,10 +43,10 @@ services:
       - "8501:8501"
     volumes:
       # 프로젝트 소스 코드만 마운트 (Poetry 관련 파일 제외)
-      - ../app:/app/
-      - ../notebooks:/app/notebooks
-      - ../data:/app/data
-      - ../model:/app/model
+      - ../app/:/app/app/
+      - ../notebooks/:/app/notebooks/
+      - ../data/:/app/data/
+      - ../model/:/app/model/
 
     environment:
       <<: *common-env

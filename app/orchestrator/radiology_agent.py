@@ -5,25 +5,36 @@ Radiological Image Analysis Agent for minimal scenario
 
 import os
 from typing import Dict, Any
-from langchain_openai import ChatOpenAI
 from .prompts.prompt import RADIOLOGY_ANALYSIS_PROMPT
+
+try:
+    # Lazy import: only available when OPENAI_API_KEY is set
+    from langchain_openai import ChatOpenAI  # type: ignore
+except Exception:  # pragma: no cover - optional dependency path
+    ChatOpenAI = None  # type: ignore
 
 
 class RadiologyAnalysisAgent:
-    """Specialized agent for medical consultation using finetuned MedBLIP results"""
-    
+    """Specialized agent for medical consultation using finetuned MedBLIP results.
+
+    If `OPENAI_API_KEY` is missing or `langchain_openai` is not installed,
+    falls back to a local, template-based explanation (no network calls).
+    """
+
     def __init__(self):
-        # Load OpenAI API key from environment
         api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key:
-            raise ValueError("OPENAI_API_KEY not found in environment variables")
-            
-        self.llm = ChatOpenAI(
-            api_key=api_key,
-            model="gpt-4",  # Use GPT-4 for better medical consultation
-            temperature=0.3  # Lower temperature for more consistent medical explanations
-        )
         self.prompt = RADIOLOGY_ANALYSIS_PROMPT
+
+        if api_key and ChatOpenAI is not None:
+            # Prefer lighter model by default unless overridden via env
+            model_name = os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")
+            self.llm = ChatOpenAI(
+                api_key=api_key,
+                model=model_name,
+                temperature=0.3,
+            )
+        else:
+            self.llm = None
     
     def provide_medical_consultation(self, medblip_result: str, patient_info: Dict[str, Any]) -> str:
         """
@@ -42,16 +53,32 @@ class RadiologyAnalysisAgent:
         basic_info = patient_info.get("basic_response", "정보 미제공")
         medical_history = patient_info.get("medical_history", "특별한 병력 없음")
         
-        # Execute analysis prompt
-        chain = self.prompt | self.llm
-        response = chain.invoke({
-            "image_analysis": medblip_result,
-            "symptoms": symptoms,
-            "basic_info": basic_info,
-            "medical_history": medical_history
-        })
-        
-        return response.content
+        # Online path
+        if self.llm is not None:
+            chain = self.prompt | self.llm
+            response = chain.invoke({
+                "image_analysis": medblip_result,
+                "symptoms": symptoms,
+                "basic_info": basic_info,
+                "medical_history": medical_history,
+            })
+            return response.content
+
+        # Offline fallback (no network, simple template)
+        return (
+            "### 이미지 소견\n"
+            f"{medblip_result}\n\n"
+            "### 검사 방법 설명\n"
+            "업로드하신 방사선 이미지를 기반으로 한 분석 결과입니다. \n"
+            "촬영된 영상은 일반적으로 방사선(X-ray) 또는 CT/MRI 등을 활용하여 얻습니다. \n"
+            "검사의 목적과 과정은 의료진의 판단에 따라 달라질 수 있습니다.\n\n"
+            "### 가능한 상태들(참고용)\n"
+            "해당 분석은 교육적 설명을 위한 참고 정보입니다. 명확한 진단을 대신하지 않습니다.\n\n"
+            "### 관련 증상\n"
+            f"사용자 제공 정보: {symptoms} / 기본정보: {basic_info} / 병력: {medical_history}\n\n"
+            "### 권고사항\n"
+            "정확한 진단과 치료를 위해서는 반드시 의료진과 상의하시기 바랍니다."
+        )
     
     def get_imaging_method_explanation(self, image_type: str = "X-ray") -> str:
         """Provide simple explanation of imaging method"""

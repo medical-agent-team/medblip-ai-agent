@@ -9,6 +9,8 @@ help:
 	@echo "  make install                    - Install all dependencies"
 	@echo "  make install WITH=<group>       - Install dependencies for specific group"
 	@echo "  make update                     - Update all dependencies"
+	@echo "  make run                        - Run Streamlit app"
+	@echo "  make test                       - Run integration tests"
 	@echo ""
 	@echo "Docker Commands:"
 
@@ -26,6 +28,12 @@ install:
 
 update:
 	poetry update
+
+run:
+	poetry run streamlit run app/first_service.py
+
+test:
+	poetry run python test_medblip.py
 
 docker-dev-up:
 	docker compose -f ./docker/docker-compose.yaml --profile dev up -d

@@ -1,26 +1,37 @@
 # medical-data-agent
 
-# poetry : Python 및 package 설치 호환성 체크 후 추가 패키지 설치
-# Docker : 컨테이너 기반 배포 환경 구성 동일하게 구성
+Minimal Streamlit app for MedBLIP-based radiology image explanation with optional LLM assistance.
 
-# poetry 설치방법
+The project is offline-first: it loads a local MedBLIP model from `model/`. If `OPENAI_API_KEY` is provided, agents enhance explanations via OpenAI; without it, the app returns templated offline responses.
 
-# BLIP(finetuned) 사용방법
-BLIP model 다운: https://drive.google.com/file/d/1oUPOfLp_wH78ywdjhZ173C9RMNrhBziu/view?usp=drive_link
+## Quickstart
 
-folder에다가 저장 -> 예시: /blip_model_finetuned
-```python
-from PIL import Image
-from transformers import BlipForConditionalGeneration, BlipProcessor
+1) Install dependencies (Poetry)
+- `make install`
 
-model = BlipForConditionalGeneration.from_pretrained("./blip_model_finetuned")
-processor = BlipProcessor.from_pretrained("./blip_model_finetuned")
+2) Configure environment
+- Copy `.env.example` to `.env` and fill in values as needed.
+- Optional: set `OPENAI_API_KEY` for enhanced consultation.
 
-image_path =  "./blip_model_finetuned/sample_image.png"
+3) Place model files
+- Put MedBLIP artifacts under `model/` (local) or mount at `/app/model` in Docker.
+- Required files typically include: `config.json`, tokenizer files, preprocessor config, and weights (`pytorch_model.bin` or `model.safetensors`).
 
-image = Image.open(image_path)
-inputs = processor(images=image, return_tensors="pt")
-pixel_values = inputs.pixel_values
-generated_ids = model.generate(pixel_values=pixel_values, max_length=50)
-generated_caption = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
-print(generated_caption)
+4) Run the app
+- `make run` (equivalent to `streamlit run app/first_service.py`)
+
+5) Run tests
+- `make test` (no network calls by default; OpenAI tests are skipped unless you set `TEST_WITH_NETWORK=true` in `.env` and provide `OPENAI_API_KEY`).
+
+## Model Paths
+- Local: `./model`
+- Docker: `/app/model`
+
+## Docker (optional)
+- Build and start (dev profile): `make docker-dev-up`
+- Stop: `make docker-dev-down`
+- The container runs Streamlit on port `8501` and mounts your repo and `model/` into `/app`.
+
+## Notes
+- The app entry is unified in `app/main.py`. `app/first_service.py` is a thin wrapper to preserve existing run commands.
+- Agents use offline fallbacks when no `OPENAI_API_KEY` is provided; no network calls are made.

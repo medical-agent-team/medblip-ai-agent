@@ -66,11 +66,11 @@ def load_medblip_model():
 
 
 @st.cache_resource
-def load_agents():
-    """Load AI agents"""
+def load_agents(orchestrator_prompt: str = "default", radiology_prompt: str = "default"):
+    """Load AI agents with specified prompt versions"""
     try:
-        orchestrator = OrchestratorAgent()
-        radiology_agent = RadiologyAnalysisAgent()
+        orchestrator = OrchestratorAgent(prompt_version=orchestrator_prompt)
+        radiology_agent = RadiologyAnalysisAgent(prompt_version=radiology_prompt)
         return orchestrator, radiology_agent
     except Exception as e:
         st.error(f"AI 에이전트 로딩 중 오류가 발생했습니다: {str(e)}")
@@ -113,6 +113,45 @@ def render_minimal_sidebar():
     """Render simplified sidebar for minimal scenario"""
     with st.sidebar:
         st.title("🏥 MedBLIP 의료 상담")
+        st.markdown("---")
+        
+        # Prompt experiment controls
+        st.markdown("### 🧪 프롬프트 실험")
+        
+        # Import prompt loader for UI
+        try:
+            from app.orchestrator.prompts.prompt_loader import list_prompts
+            available_prompts = list_prompts()
+            
+            # Orchestrator prompt selection
+            orch_options = ["default"] + available_prompts.get("orchestrator", [])
+            orch_options = [opt.replace("orchestrator_", "") if opt.startswith("orchestrator_") else opt for opt in orch_options]
+            
+            selected_orch = st.selectbox(
+                "Orchestrator 프롬프트:",
+                options=orch_options,
+                key="orchestrator_prompt_version"
+            )
+            
+            # Radiology prompt selection  
+            rad_options = ["default"] + available_prompts.get("radiology", [])
+            rad_options = [opt.replace("radiology_", "") if opt.startswith("radiology_") else opt for opt in rad_options]
+            
+            selected_rad = st.selectbox(
+                "Radiology 프롬프트:",
+                options=rad_options,
+                key="radiology_prompt_version"
+            )
+            
+            # Store selected prompts in session state
+            st.session_state.selected_orchestrator_prompt = selected_orch
+            st.session_state.selected_radiology_prompt = selected_rad
+            
+        except Exception as e:
+            st.warning(f"프롬프트 로딩 오류: {e}")
+            st.session_state.selected_orchestrator_prompt = "default"
+            st.session_state.selected_radiology_prompt = "default"
+        
         st.markdown("---")
         st.markdown("### 진행 단계")
 
@@ -332,9 +371,21 @@ def main():
     # Render sidebar
     render_minimal_sidebar()
 
-    # Load models and agents
+    # Load models and agents with selected prompts
     model, processor = load_medblip_model()
-    agents = load_agents()
+    
+    # Get selected prompt versions from session state
+    orch_prompt = st.session_state.get("selected_orchestrator_prompt", "default")
+    rad_prompt = st.session_state.get("selected_radiology_prompt", "default")
+    
+    # Clear agent cache if prompt versions changed
+    if (st.session_state.get("last_orch_prompt") != orch_prompt or 
+        st.session_state.get("last_rad_prompt") != rad_prompt):
+        load_agents.clear()
+        st.session_state.last_orch_prompt = orch_prompt
+        st.session_state.last_rad_prompt = rad_prompt
+    
+    agents = load_agents(orch_prompt, rad_prompt)
     
     if agents is None:
         st.error("AI 서비스를 초기화할 수 없습니다. 환경설정을 확인해주세요.")

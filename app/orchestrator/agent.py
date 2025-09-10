@@ -9,11 +9,12 @@ from langgraph.graph.message import add_messages
 from typing_extensions import TypedDict
 
 from .prompts.prompt import ORCHESTRATOR_AGENT_PROMPT, RADIOLOGY_ANALYSIS_PROMPT
+from .prompts.prompt_loader import get_orchestrator_prompt
 from .models import ConversationState
 
 
 class OrchestratorAgent:
-    def __init__(self, llm: Optional[BaseChatModel] = None):
+    def __init__(self, llm: Optional[BaseChatModel] = None, prompt_version: str = "default"):
         if llm is None:
             # Load OpenAI API key from environment
             api_key = os.getenv("OPENAI_API_KEY")
@@ -26,9 +27,22 @@ class OrchestratorAgent:
             )
         else:
             self.llm = llm
-            
-        self.orchestrator_prompt = ORCHESTRATOR_AGENT_PROMPT
+        
+        # Load prompt based on version
+        if prompt_version == "default":
+            self.orchestrator_prompt = ORCHESTRATOR_AGENT_PROMPT
+        else:
+            # Try to load experimental prompt
+            experimental_prompt = get_orchestrator_prompt(prompt_version)
+            if experimental_prompt is not None:
+                self.orchestrator_prompt = experimental_prompt
+                print(f"✅ Loaded experimental orchestrator prompt: {prompt_version}")
+            else:
+                print(f"⚠️  Failed to load prompt version {prompt_version}, using default")
+                self.orchestrator_prompt = ORCHESTRATOR_AGENT_PROMPT
+        
         self.radiology_prompt = RADIOLOGY_ANALYSIS_PROMPT
+        self.current_prompt_version = prompt_version
         self.conversation_state = {
             "conversation_stage": "greeting",
             "collected_info": {},

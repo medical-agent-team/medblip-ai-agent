@@ -7,12 +7,13 @@ import os
 from typing import Dict, Any
 from langchain_openai import ChatOpenAI
 from .prompts.prompt import RADIOLOGY_ANALYSIS_PROMPT
+from .prompts.prompt_loader import get_radiology_prompt
 
 
 class RadiologyAnalysisAgent:
     """Specialized agent for medical consultation using finetuned MedBLIP results"""
     
-    def __init__(self):
+    def __init__(self, prompt_version: str = "default"):
         # Load OpenAI API key from environment
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
@@ -23,7 +24,21 @@ class RadiologyAnalysisAgent:
             model="gpt-4",  # Use GPT-4 for better medical consultation
             temperature=0.3  # Lower temperature for more consistent medical explanations
         )
-        self.prompt = RADIOLOGY_ANALYSIS_PROMPT
+        
+        # Load prompt based on version
+        if prompt_version == "default":
+            self.prompt = RADIOLOGY_ANALYSIS_PROMPT
+        else:
+            # Try to load experimental prompt
+            experimental_prompt = get_radiology_prompt(prompt_version)
+            if experimental_prompt is not None:
+                self.prompt = experimental_prompt
+                print(f"✅ Loaded experimental radiology prompt: {prompt_version}")
+            else:
+                print(f"⚠️  Failed to load prompt version {prompt_version}, using default")
+                self.prompt = RADIOLOGY_ANALYSIS_PROMPT
+        
+        self.current_prompt_version = prompt_version
     
     def provide_medical_consultation(self, medblip_result: str, patient_info: Dict[str, Any]) -> str:
         """

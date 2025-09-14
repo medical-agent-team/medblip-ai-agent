@@ -1,26 +1,31 @@
-# medical-data-agent
+# medical-data-agent (Production)
 
-# poetry : Python 및 package 설치 호환성 체크 후 추가 패키지 설치
-# Docker : 컨테이너 기반 배포 환경 구성 동일하게 구성
+MedBLIP 기반 방사선 이미지 설명용 Streamlit 앱의 프로덕션 구성입니다. 
+로컬 `model/` 디렉토리의 MedBLIP 아티팩트를 사용하며, `OPENAI_API_KEY`가 있으면 보강 답변을 제공합니다. 키가 없어도 오프라인으로 동작합니다.
 
-# poetry 설치방법
+## 빠른 시작 (Production)
 
-# BLIP(finetuned) 사용방법
-BLIP model 다운: https://drive.google.com/file/d/1oUPOfLp_wH78ywdjhZ173C9RMNrhBziu/view?usp=drive_link
+1) 의존성 설치 (Poetry)
+- `make install`
 
-folder에다가 저장 -> 예시: /blip_model_finetuned
-```python
-from PIL import Image
+2) 환경 변수 설정
+- `.env.example`를 `.env`로 복사 후 필요한 값을 채웁니다.
 
-from transformers import BlipForConditionalGeneration, BlipProcessor
-model = BlipForConditionalGeneration.from_pretrained("./blip_model_finetuned")
-processor = BlipProcessor.from_pretrained("./blip_model_finetuned")
+3) 모델 파일 배치
+- MedBLIP 아티팩트를 로컬 `model/` 아래에 둡니다. (Docker 사용 시 `/app/model`로 마운트됨)
+- 필요 파일: `config.json`, 토크나이저 파일들, `preprocessor_config.json`, 가중치(`pytorch_model.bin` 또는 `model.safetensors`)
 
-image_path =  "./blip_model_finetuned/sample_image.png"
+4) 앱 실행
+- 로컬: `make run` (내부적으로 `streamlit run app/main.py`)
+- Docker (권장):
+  - 빌드: `make docker-prod-build`
+  - 실행: `make docker-prod-up`
+  - 중지: `make docker-prod-down`
 
-image = Image.open(image_path)
-inputs = processor(images=image, return_tensors="pt")
-pixel_values = inputs.pixel_values
-generated_ids = model.generate(pixel_values=pixel_values, max_length=50)
-generated_caption = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
-print(generated_caption)
+## 모델 경로
+- 로컬: `./model`
+- Docker: `/app/model` (Compose에서 로컬 `model/`만 마운트)
+
+## 참고
+- 테스트 및 노트북 자산은 프로덕션 구성에서 제거되었습니다.
+- 앱 엔트리포인트는 `app/main.py`입니다.

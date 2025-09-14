@@ -1,37 +1,31 @@
-# medical-data-agent
+# medical-data-agent (Production)
 
-Minimal Streamlit app for MedBLIP-based radiology image explanation with optional LLM assistance.
+MedBLIP 기반 방사선 이미지 설명용 Streamlit 앱의 프로덕션 구성입니다. 
+로컬 `model/` 디렉토리의 MedBLIP 아티팩트를 사용하며, `OPENAI_API_KEY`가 있으면 보강 답변을 제공합니다. 키가 없어도 오프라인으로 동작합니다.
 
-The project is offline-first: it loads a local MedBLIP model from `model/`. If `OPENAI_API_KEY` is provided, agents enhance explanations via OpenAI; without it, the app returns templated offline responses.
+## 빠른 시작 (Production)
 
-## Quickstart
-
-1) Install dependencies (Poetry)
+1) 의존성 설치 (Poetry)
 - `make install`
 
-2) Configure environment
-- Copy `.env.example` to `.env` and fill in values as needed.
-- Optional: set `OPENAI_API_KEY` for enhanced consultation.
+2) 환경 변수 설정
+- `.env.example`를 `.env`로 복사 후 필요한 값을 채웁니다.
 
-3) Place model files
-- Put MedBLIP artifacts under `model/` (local) or mount at `/app/model` in Docker.
-- Required files typically include: `config.json`, tokenizer files, preprocessor config, and weights (`pytorch_model.bin` or `model.safetensors`).
+3) 모델 파일 배치
+- MedBLIP 아티팩트를 로컬 `model/` 아래에 둡니다. (Docker 사용 시 `/app/model`로 마운트됨)
+- 필요 파일: `config.json`, 토크나이저 파일들, `preprocessor_config.json`, 가중치(`pytorch_model.bin` 또는 `model.safetensors`)
 
-4) Run the app
-- `make run` (equivalent to `streamlit run app/first_service.py`)
+4) 앱 실행
+- 로컬: `make run` (내부적으로 `streamlit run app/main.py`)
+- Docker (권장):
+  - 빌드: `make docker-prod-build`
+  - 실행: `make docker-prod-up`
+  - 중지: `make docker-prod-down`
 
-5) Run tests
-- `make test` (no network calls by default; OpenAI tests are skipped unless you set `TEST_WITH_NETWORK=true` in `.env` and provide `OPENAI_API_KEY`).
+## 모델 경로
+- 로컬: `./model`
+- Docker: `/app/model` (Compose에서 로컬 `model/`만 마운트)
 
-## Model Paths
-- Local: `./model`
-- Docker: `/app/model`
-
-## Docker (optional)
-- Build and start (dev profile): `make docker-dev-up`
-- Stop: `make docker-dev-down`
-- The container runs Streamlit on port `8501` and mounts your repo and `model/` into `/app`.
-
-## Notes
-- The app entry is unified in `app/main.py`. `app/first_service.py` is a thin wrapper to preserve existing run commands.
-- Agents use offline fallbacks when no `OPENAI_API_KEY` is provided; no network calls are made.
+## 참고
+- 테스트 및 노트북 자산은 프로덕션 구성에서 제거되었습니다.
+- 앱 엔트리포인트는 `app/main.py`입니다.

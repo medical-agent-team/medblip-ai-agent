@@ -3,7 +3,7 @@ FROM python:3.11.7-slim
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     POETRY_VERSION=2.1.3 \
-    PATH="/app/.venv/bin:$PATH"
+    PATH="/opt/venv/bin:$PATH"
 
 WORKDIR /app
 
@@ -17,8 +17,9 @@ RUN python -m pip install --upgrade pip \
 COPY pyproject.toml poetry.lock* ./
 
 RUN poetry config virtualenvs.create true \
- && poetry config virtualenvs.in-project true \
- && poetry install --no-interaction --no-ansi
+ && poetry config virtualenvs.in-project false \
+ && poetry config virtualenvs.path /opt/venv \
+ && poetry install --no-interaction --no-ansi --no-root
 
 COPY . .
 

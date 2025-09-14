@@ -3,7 +3,7 @@ x-common-env: &common-env
 
 services:
   app:
-    profiles: ["dev", "prod"]
+    profiles: ["prod"]
     container_name: medblip_streamlit_app
     build:
       context: ..
@@ -14,11 +14,9 @@ services:
     ports:
       - "8501:8501"
     volumes:
-      - ..:/app
       - ../model:/app/model
     environment:
       <<: *common-env
     mem_limit: 4g
     cpus: 2
     restart: unless-stopped
-

@@ -1,64 +1,28 @@
-FROM python:3.11.7-slim AS builder
+FROM python:3.11.7-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    POETRY_VERSION=2.1.3
+    POETRY_VERSION=2.1.3 \
+    PATH="/opt/venv/bin:$PATH"
 
 WORKDIR /app
 
-# 빌드에 필요한 휠 빌드 도구 설치(빌더에서만 설치)
 RUN apt-get update \
  && apt-get install -y --no-install-recommends build-essential \
  && rm -rf /var/lib/apt/lists/*
 
-# Poetry 설치 (버전 고정 권장)
 RUN python -m pip install --upgrade pip \
  && pip install --no-cache-dir "poetry==${POETRY_VERSION}"
 
-
-# 의존성만 먼저 복사
 COPY pyproject.toml poetry.lock* ./
 
-# .venv을 컨태이너 내부에 생성
 RUN poetry config virtualenvs.create true \
- && poetry config virtualenvs.in-project true \
+ && poetry config virtualenvs.in-project false \
  && poetry config virtualenvs.path /opt/venv \
  && poetry install --no-interaction --no-ansi --no-root
 
-# ---------- api ----------
-FROM python:3.11.7-slim AS api
+COPY . .
 
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PATH="/app/.venv/bin:$PATH"
+EXPOSE 8501
 
-WORKDIR /app
-
-# 빌더에서 만든 가상환경 복사
-COPY --from=builder /app/.venv /app/.venv
-COPY app/ ./app/
-# 프로덕션에 필요한 런타임만 추가
-RUN /app/.venv/bin/python -m pip install --no-cache-dir "uvicorn[standard]"
-
-EXPOSE 8000
-# CMD ["/opt/venv/bin/uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
-CMD ["sleep", "infinity"]
-
-# ---------- notebook ----------
-FROM python:3.11.7-slim AS notebook
-# 개발 전용 의존성(노트북)
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PATH="/app/.venv/bin:$PATH" \
-    JUPYTER_ENABLE_LAB=yes
-
-WORKDIR /app
-
-COPY --from=builder /app/.venv /app/.venv
-COPY app/ ./app/
-
-RUN /app/.venv/bin/python -m pip install --no-cache-dir jupyterlab
-
-EXPOSE 8888
-CMD ["/app/.venv/bin/jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root", "--NotebookApp.token=", "--NotebookApp.disable_check_xsrf=True"]
-
+CMD ["bash", "-lc", "poetry run streamlit run app/main.py --server.port=8501 --server.address=0.0.0.0"]

@@ -2,82 +2,21 @@ x-common-env: &common-env
   PYTHONPATH: "/app"
 
 services:
-  # ---- prod api 컨테이너 ----
-  api:
+  app:
     profiles: ["prod"]
-    container_name: medi_agent_prod_api
+    container_name: medblip_streamlit_app
     build:
       context: ..
       dockerfile: docker/Dockerfile
-      target: api # Dockerfile의 api 스테이지
     env_file:
       - ../.env
     user: root
     ports:
-      - "8000:8000"
+      - "8501:8501"
     volumes:
-      # 프로젝트 소스 코드만 마운트 (Poetry 관련 파일 제외)
-      # - ../app:/app/
-      - ../data:/app/data
+      - ../model:/app/model
     environment:
       <<: *common-env
-    # 리소스 제한
-    mem_limit: 4g     # 메모리 최대 4GB
-    cpus: 2 
-    # 컨테이너 재시작 정책
+    mem_limit: 4g
+    cpus: 2
     restart: unless-stopped
-  # ---- dev notebook 컨테이너 ----
-  notebook-dev:
-    profiles: ["dev"]
-    container_name: medi_agent_dev_jupyter
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-      target: notebook # Dockerfile의 notebook 스테이지
-    env_file:
-      - ../.env
-    user: root       
-    ports:
-      - "8888:8888"
-    volumes:
-      # 프로젝트 소스 코드만 마운트 (Poetry 관련 파일 제외)
-      # - ../app:/app/
-      - ../notebooks:/app/notebooks
-      - ../data:/app/data
-    environment:
-      <<: *common-env
-      JUPYTER_ENABLE_LAB: "yes"
-    # 리소스 제한
-    mem_limit: 4g     # 메모리 최대 4GB
-    cpus: 2 
-    # 컨테이너 재시작 정책
-    restart: unless-stopped
-
-  # ---- dev api 컨테이너 ----
-  api-dev:
-    profiles: ["dev"]
-    container_name: medi_agent_dev_api
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-      target: api # Dockerfile의 api 스테이지
-    env_file:
-      - ../.env
-    user: root
-    ports:
-      - "8000:8000"
-    volumes:
-      # 프로젝트 소스 코드만 마운트 (Poetry 관련 파일 제외)
-      # - ../app:/app/
-      - ../data:/app/data
-    environment:
-      <<: *common-env
-    # 리소스 제한
-    mem_limit: 4g     # 메모리 최대 4GB
-    cpus: 2 
-    # 컨테이너 재시작 정책
-    restart: unless-stopped
-    # 개발서버 reload 명령어 추가
-    # command: ["uvicorn","app.main:app","--host","0.0.0.0","--port","8000","--reload"]
-
-

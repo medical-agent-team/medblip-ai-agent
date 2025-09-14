@@ -5,76 +5,64 @@ Medical AI Consultation Service - Minimal Radiological Image Analysis Scenario
 """
 
 import streamlit as st
-import sys
 import os
 from PIL import Image
-from transformers import BlipForConditionalGeneration, BlipProcessor
 from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
 
-# Add project root directory to Python path
-project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if project_root not in sys.path:
-    sys.path.append(project_root)
-
 from app.orchestrator.agent import OrchestratorAgent
 from app.orchestrator.radiology_agent import RadiologyAnalysisAgent
+from app.core.model_utils import load_medblip_model as _load_medblip_model
 
 
 @st.cache_resource
 def load_medblip_model():
-    """Load finetuned MedBLIP model for medical image analysis"""
-    
-    # 가능한 모델 경로들 (우선순위 순)
-    possible_paths = [
-        "/app/model",  # Docker 컨테이너 내부 경로
+    """Load finetuned MedBLIP model for medical image analysis (cached)."""
+    model, processor, resolved = _load_medblip_model()
+    if resolved:
+        if model is not None and processor is not None:
+            st.success(f"MedBLIP 모델 로딩 완료: {resolved}")
+        else:
+            st.warning(f"경로 {resolved} 에서 모델 로딩 실패 또는 불완전합니다.")
+    else:
+        st.error(
+            """
+        MedBLIP 모델을 찾을 수 없습니다. 다음을 확인해주세요:
 
-    ]
-    
-    for model_path in possible_paths:
-        try:
-            # 경로 존재 확인
-            if os.path.exists(model_path):
-                st.info(f"MedBLIP 모델을 로딩 중입니다: {model_path}")
-                model = BlipForConditionalGeneration.from_pretrained(model_path, local_files_only=True)
-                processor = BlipProcessor.from_pretrained(model_path, local_files_only=True)
-                st.success(f"MedBLIP 모델 로딩 완료: {model_path}")
-                return model, processor
-            else:
-                st.info(f"경로에서 모델을 찾을 수 없습니다: {model_path}")
-                
-        except Exception as e:
-            st.warning(f"경로 {model_path}에서 모델 로딩 실패: {str(e)}")
-            continue
-    
-    # 모든 경로에서 실패한 경우
-    st.error("""
-    MedBLIP 모델을 찾을 수 없습니다. 다음을 확인해주세요:
-    
-    1. 모델 파일이 다음 경로 중 하나에 있는지 확인:
-       - /app/model/
-       
-    2. 모델 디렉토리에 다음 파일들이 있는지 확인:
-       - config.json
-       - pytorch_model.bin 또는 model.safetensors
-       - tokenizer.json
-       - preprocessor_config.json
-    """)
-    return None, None
+        1. 모델 파일이 다음 경로 중 하나에 있는지 확인:
+           - ./model/
+           - /app/model/
+
+        2. 모델 디렉토리에 다음 파일들이 있는지 확인:
+           - config.json
+           - pytorch_model.bin 또는 model.safetensors
+           - tokenizer.json
+           - preprocessor_config.json
+        """
+        )
+    return model, processor
 
 
 @st.cache_resource
 def load_agents():
-    """Load AI agents"""
+    """Load AI agents. Orchestrator is optional; radiology agent has offline fallback."""
+    orchestrator = None
     try:
         orchestrator = OrchestratorAgent()
-        radiology_agent = RadiologyAnalysisAgent()
-        return orchestrator, radiology_agent
     except Exception as e:
-        st.error(f"AI 에이전트 로딩 중 오류가 발생했습니다: {str(e)}")
-        return None, None
+        st.info("OpenAI 키가 없어 오케스트레이터를 오프라인 모드로 동작합니다.")
+        orchestrator = OrchestratorAgent(llm=None)
+
+    try:
+        radiology_agent = RadiologyAnalysisAgent()
+    except Exception as e:
+        # Radiology agent provides offline fallback internally; this should not happen
+        st.warning(f"의료 상담 에이전트 초기화 실패: {str(e)}")
+        radiology_agent = None
+
+    return orchestrator, radiology_agent
 
 
 def analyze_medical_image(image, model, processor):
@@ -334,13 +322,7 @@ def main():
 
     # Load models and agents
     model, processor = load_medblip_model()
-    agents = load_agents()
-    
-    if agents is None:
-        st.error("AI 서비스를 초기화할 수 없습니다. 환경설정을 확인해주세요.")
-        st.stop()
-    
-    orchestrator, radiology_agent = agents
+    orchestrator, radiology_agent = load_agents()
 
     # Main interface
     st.title("🏥 MedBLIP 기반 의료 상담 서비스")
@@ -350,7 +332,7 @@ def main():
     render_minimal_chat_interface(orchestrator)
 
     # Image upload and analysis section
-    if st.session_state.conversation_stage in ["image_upload", "basic_info"]:
+    if st.session_state.conversation_stage in ["image_upload", "basic_info"] and radiology_agent is not None:
         handle_image_upload_and_analysis(orchestrator, radiology_agent, model, processor)
 
     # Display collected information (for debugging)

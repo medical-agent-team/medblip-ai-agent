@@ -3,3 +3,14 @@
 *.zip
 CLAUDE.md
 *.safetensors
+notebooks/
+
+# OS/editor/caches (exclude non-project files)
+.DS_Store
+.AppleDouble
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.idea/
+.vscode/
+*.log

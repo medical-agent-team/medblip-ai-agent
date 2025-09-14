@@ -1,7 +1,7 @@
 # Show help message
 help:
-	@echo "Medical Agent Development Commands"
-	@echo "=================================="
+	@echo "Production Commands"
+	@echo "===================="
 	@echo ""
 	@echo "Poetry Package Management:"
 	@echo "  make add PKG=<package>          - Add a new package"
@@ -10,9 +10,11 @@ help:
 	@echo "  make install WITH=<group>       - Install dependencies for specific group"
 	@echo "  make update                     - Update all dependencies"
 	@echo "  make run                        - Run Streamlit app"
-	@echo "  make test                       - Run integration tests"
 	@echo ""
-	@echo "Docker Commands:"
+	@echo "Docker (Production):"
+	@echo "  make docker-prod-build          - Build images"
+	@echo "  make docker-prod-up             - Start containers"
+	@echo "  make docker-prod-down           - Stop containers"
 
 
 add:
@@ -30,22 +32,13 @@ update:
 	poetry update
 
 run:
-	poetry run streamlit run app/first_service.py
-
-test:
-	poetry run python test_medblip.py
-
-docker-dev-up:
-	docker compose -f ./docker/docker-compose.yaml --profile dev up -d
-
-docker-dev-build:
-	docker compose -f ./docker/docker-compose.yaml --profile dev build
-
-docker-dev-down:
-	docker compose -f ./docker/docker-compose.yaml --profile dev down
+	poetry run streamlit run app/main.py
 
 docker-prod-up:
 	docker compose -f ./docker/docker-compose.yaml --profile prod up -d
+
+docker-prod-build:
+	docker compose -f ./docker/docker-compose.yaml --profile prod build
 
 docker-prod-down:
 	docker compose -f ./docker/docker-compose.yaml --profile prod down

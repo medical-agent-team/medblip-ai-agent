@@ -5,68 +5,44 @@ Medical AI Consultation Service - Minimal Radiological Image Analysis Scenario
 """
 
 import streamlit as st
-import sys
 import os
 from PIL import Image
-from transformers import BlipForConditionalGeneration, BlipProcessor
 from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
 
-# Add project root directory to Python path
-project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if project_root not in sys.path:
-    sys.path.append(project_root)
-
 from app.orchestrator.agent import OrchestratorAgent
 from app.orchestrator.radiology_agent import RadiologyAnalysisAgent
+from app.core.model_utils import load_medblip_model as _load_medblip_model
 
 
 @st.cache_resource
 def load_medblip_model():
-    """Load finetuned MedBLIP model for medical image analysis"""
+    """Load finetuned MedBLIP model for medical image analysis (cached)."""
+    model, processor, resolved = _load_medblip_model()
+    if resolved:
+        if model is not None and processor is not None:
+            st.success(f"MedBLIP 모델 로딩 완료: {resolved}")
+        else:
+            st.warning(f"경로 {resolved} 에서 모델 로딩 실패 또는 불완전합니다.")
+    else:
+        st.error(
+            """
+        MedBLIP 모델을 찾을 수 없습니다. 다음을 확인해주세요:
 
-    possible_paths = [
-        "./model",     # Local dev
-        "/app/model",  # Docker container
-    ]
+        1. 모델 파일이 다음 경로 중 하나에 있는지 확인:
+           - ./model/
+           - /app/model/
 
-    for model_path in possible_paths:
-        try:
-            if os.path.exists(model_path):
-                st.info(f"MedBLIP 모델을 로딩 중입니다: {model_path}")
-                model = BlipForConditionalGeneration.from_pretrained(
-                    model_path, local_files_only=True
-                )
-                processor = BlipProcessor.from_pretrained(
-                    model_path, local_files_only=True
-                )
-                st.success(f"MedBLIP 모델 로딩 완료: {model_path}")
-                return model, processor
-            else:
-                st.info(f"경로에서 모델을 찾을 수 없습니다: {model_path}")
-
-        except Exception as e:
-            st.warning(f"경로 {model_path}에서 모델 로딩 실패: {str(e)}")
-            continue
-
-    st.error(
+        2. 모델 디렉토리에 다음 파일들이 있는지 확인:
+           - config.json
+           - pytorch_model.bin 또는 model.safetensors
+           - tokenizer.json
+           - preprocessor_config.json
         """
-    MedBLIP 모델을 찾을 수 없습니다. 다음을 확인해주세요:
-
-    1. 모델 파일이 다음 경로 중 하나에 있는지 확인:
-       - ./model/
-       - /app/model/
-
-    2. 모델 디렉토리에 다음 파일들이 있는지 확인:
-       - config.json
-       - pytorch_model.bin 또는 model.safetensors
-       - tokenizer.json
-       - preprocessor_config.json
-    """
-    )
-    return None, None
+        )
+    return model, processor
 
 
 @st.cache_resource

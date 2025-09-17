@@ -2,6 +2,8 @@
 .venv
 *.zip
 CLAUDE.md
+AGENTS.md
+.claude/
 *.safetensors
 notebooks/
 

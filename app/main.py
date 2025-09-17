@@ -12,9 +12,7 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-from app.agents.agent import OrchestratorAgent
-from app.agents.radiology_agent import RadiologyAnalysisAgent
-from app.core.model_utils import load_medblip_model as _load_medblip_model
+from app.agents.admin_agent import AdminAgent
 
 
 @st.cache_resource
@@ -29,10 +27,6 @@ def load_admin_agent():
         return None
 
 
-
-
-
-
 def initialize_session_state():
     """Initialize session state for Admin Agent"""
     if "admin_agent" not in st.session_state:
@@ -45,6 +39,8 @@ def initialize_session_state():
         st.session_state.conversation_complete = False
     if "handoff_data" not in st.session_state:
         st.session_state.handoff_data = {}
+    if "intake_started" not in st.session_state:
+        st.session_state.intake_started = False
 
 
 def render_sidebar():
@@ -57,12 +53,12 @@ def render_sidebar():
         # Multi-agent workflow stages
         stages = {
             "greeting": "🤝 서비스 소개",
-            "basic_info": "📝 기본 정보 수집",
-            "medical_history": "📋 과거 병력 문진",
-            "current_symptoms": "🩺 현재 증상 문진",
+            "demographics": "📝 인구학적 정보 수집",
+            "history": "📋 과거 병력 문진",
+            "symptoms": "🩺 현재 증상 문진",
+            "medications": "💊 복용 약물 확인",
             "image_request": "📷 이미지 업로드 요청",
             "image_analysis": "🔍 MedBLIP 이미지 분석",
-            "data_preparation": "📊 데이터 준비",
             "handoff": "🔄 다음 에이전트로 인계"
         }
 
@@ -89,7 +85,10 @@ def render_sidebar():
         st.info("LangGraph 기반 Multi-Agent 시스템으로 체계적인 의료 상담을 제공합니다.")
 
         if st.button("새로 시작"):
-            keys_to_clear = ["admin_agent", "messages", "current_stage", "conversation_complete", "handoff_data"]
+            keys_to_clear = [
+                "admin_agent", "messages", "current_stage",
+                "conversation_complete", "handoff_data", "intake_started"
+            ]
             for key in keys_to_clear:
                 if key in st.session_state:
                     del st.session_state[key]
@@ -116,7 +115,11 @@ def handle_image_upload():
             col1, col2 = st.columns([1, 1])
 
             with col1:
-                st.image(uploaded_file, caption="업로드된 방사선 이미지", use_column_width=True)
+                st.image(
+                    uploaded_file,
+                    caption="업로드된 방사선 이미지",
+                    use_column_width=True
+                )
 
             with col2:
                 st.success("이미지 업로드 완료!")
@@ -130,22 +133,31 @@ def process_with_admin_agent(user_input: str, image=None):
     if st.session_state.admin_agent:
         with st.spinner("Admin Agent가 처리 중입니다..."):
             try:
-                result = st.session_state.admin_agent.process_user_input(user_input, image)
+                # Process user input directly (intake should already be started)
+                result = st.session_state.admin_agent.process_user_input(
+                    user_input, image
+                )
 
                 if result["success"]:
                     # Update session state
                     st.session_state.current_stage = result["current_stage"]
-                    st.session_state.conversation_complete = result["conversation_complete"]
+                    st.session_state.conversation_complete = result[
+                        "conversation_complete"
+                    ]
 
                     # Add new messages
                     new_messages = result["messages"]
                     if new_messages:
-                        latest_message = new_messages[-1]
-                        st.session_state.messages.append(latest_message)
+                        # Only add new messages (avoid duplicates)
+                        existing_count = len(st.session_state.messages)
+                        if len(new_messages) > existing_count:
+                            for msg in new_messages[existing_count:]:
+                                st.session_state.messages.append(msg)
 
-                    # Store handoff data if conversation is complete
-                    if result["conversation_complete"]:
-                        st.session_state.handoff_data = result["collected_data"]
+                    # Store case context if conversation is complete
+                    if (result["conversation_complete"] and
+                            result.get("case_context")):
+                        st.session_state.handoff_data = result["case_context"]
 
                     st.rerun()
                 else:
@@ -176,7 +188,9 @@ def render_chat_interface():
             # Process with Admin Agent
             process_with_admin_agent(prompt)
     else:
-        st.info("✅ 문진이 완료되었습니다. 다음 에이전트에서 상세 분석을 진행합니다.")
+        st.info(
+            "✅ 문진이 완료되었습니다. 다음 에이전트에서 상세 분석을 진행합니다."
+        )
 
 
 def display_handoff_data():
@@ -188,29 +202,34 @@ def display_handoff_data():
         col1, col2 = st.columns(2)
 
         with col1:
-            st.markdown("**환자 정보:**")
-            if st.session_state.handoff_data.get("patient_info"):
-                st.json(st.session_state.handoff_data["patient_info"])
+            st.markdown("**인구학적 정보:**")
+            if st.session_state.handoff_data.get("demographics"):
+                st.json(st.session_state.handoff_data["demographics"])
 
             st.markdown("**과거 병력:**")
-            if st.session_state.handoff_data.get("medical_history"):
-                st.json(st.session_state.handoff_data["medical_history"])
+            if st.session_state.handoff_data.get("history"):
+                st.json(st.session_state.handoff_data["history"])
 
         with col2:
             st.markdown("**현재 증상:**")
             if st.session_state.handoff_data.get("symptoms"):
                 st.json(st.session_state.handoff_data["symptoms"])
 
-            st.markdown("**MedBLIP 분석 결과:**")
-            if st.session_state.handoff_data.get("medblip_analysis"):
-                st.text(st.session_state.handoff_data["medblip_analysis"])
+            st.markdown("**복용 약물:**")
+            if st.session_state.handoff_data.get("meds"):
+                st.json(st.session_state.handoff_data["meds"])
 
-        # Tasks for next agent
-        handoff_data = st.session_state.admin_agent.get_handoff_data()
-        if handoff_data.get("tasks_for_next_agent"):
-            st.markdown("**다음 에이전트 수행 태스크:**")
-            for task in handoff_data["tasks_for_next_agent"]:
-                st.markdown(f"- {task}")
+        st.markdown("**MedBLIP 분석 결과:**")
+        if st.session_state.handoff_data.get("medblip_findings"):
+            findings = st.session_state.handoff_data["medblip_findings"]
+            if isinstance(findings, dict) and findings.get("description"):
+                st.text(findings["description"])
+            else:
+                st.json(findings)
+
+        st.markdown("**자유 텍스트:**")
+        if st.session_state.handoff_data.get("free_text"):
+            st.text(st.session_state.handoff_data["free_text"])
 
 
 def main():
@@ -230,16 +249,30 @@ def main():
     if not st.session_state.admin_agent:
         st.session_state.admin_agent = load_admin_agent()
 
+    # ✅ Ensure intake session started before first user input
+    if (st.session_state.admin_agent and
+            not st.session_state.intake_started):
+        intake_result = st.session_state.admin_agent.start_intake()
+        if intake_result["success"]:
+            st.session_state.intake_started = True
+            st.session_state.messages.extend(intake_result["messages"])
+            st.session_state.current_stage = intake_result.get(
+                "current_stage", "demographics"
+            )
+        else:
+            error_msg = intake_result.get('error', 'Unknown error')
+            st.error(f"Intake 시작 실패: {error_msg}")
+            return
+
     # Render sidebar
     render_sidebar()
 
     # Main interface
     st.title("🤖 Multi-Agent 의료 상담 시스템")
-    st.markdown("LangGraph 기반 Admin Agent가 체계적인 건강 문진을 진행하고, MedBLIP으로 이미지를 분석합니다.")
-
-    # Initialize conversation with greeting
-    if not st.session_state.messages and st.session_state.admin_agent:
-        process_with_admin_agent("안녕하세요")
+    st.markdown(
+        "LangGraph 기반 Admin Agent가 체계적인 건강 문진을 진행하고, "
+        "MedBLIP으로 이미지를 분석합니다."
+    )
 
     # Render chat interface
     render_chat_interface()
@@ -248,7 +281,10 @@ def main():
     handle_image_upload()
 
     # Display handoff data if available
-    if st.checkbox("다음 에이전트 전달 데이터 확인 (개발용)", value=False):
+    if st.checkbox(
+        "다음 에이전트 전달 데이터 확인 (개발용)",
+        value=False
+    ):
         display_handoff_data()
 
 

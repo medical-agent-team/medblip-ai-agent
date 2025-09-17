@@ -12,8 +12,8 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-from app.orchestrator.agent import OrchestratorAgent
-from app.orchestrator.radiology_agent import RadiologyAnalysisAgent
+from app.agents.agent import OrchestratorAgent
+from app.agents.radiology_agent import RadiologyAnalysisAgent
 from app.core.model_utils import load_medblip_model as _load_medblip_model
 
 

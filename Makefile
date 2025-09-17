@@ -32,7 +32,7 @@ update:
 	poetry update
 
 run:
-	poetry run streamlit run app/main.py
+	poetry run streamlit run app/main.py --server.port=8501 --server.address=0.0.0.0
 
 docker-prod-up:
 	docker compose -f ./docker/docker-compose.yaml --profile prod up -d

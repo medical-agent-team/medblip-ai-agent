@@ -85,8 +85,7 @@ def render_sidebar():
             "medications": "💊 복용 약물 확인",
             "image_request": "📷 이미지 업로드 요청",
             "image_analysis": "🔍 MedBLIP 이미지 분석",
-            "deliberation": "🎯 Multi-Agent 심의",
-            "completed": "✅ 분석 완료"
+            "handoff": "🔄 다음 에이전트로 인계"
         }
 
         current_stage = st.session_state.current_stage
@@ -95,6 +94,22 @@ def render_sidebar():
                 st.markdown(f"**➤ {description}**")
             else:
                 st.markdown(f"   {description}")
+
+        st.markdown("---")
+        st.markdown("### Admin Agent 상태")
+
+        if st.session_state.admin_agent:
+            st.success("✅ Admin Agent 활성화")
+        else:
+            st.warning("⚠️ Admin Agent 비활성화")
+
+        if st.session_state.conversation_complete:
+            if not st.session_state.deliberation_started:
+                st.info("⏳ 문진 완료 - Supervisor Agent 시작 준비")
+            elif st.session_state.deliberation_result:
+                st.success("✅ Multi-Agent 분석 완료")
+            else:
+                st.info("🔄 Multi-Agent 협의 진행 중...")
 
         st.markdown("---")
         st.markdown("### 서비스 안내")
@@ -142,62 +157,49 @@ def handle_image_upload():
             with col2:
                 st.success("이미지 업로드 완료!")
                 if st.button("이미지 분석 시작", type="primary"):
-                    # 상태를 이미지 분석으로 먼저 업데이트
-                    st.session_state.current_stage = "image_analysis"
-                    # Admin Agent에서 이미지 처리 (중복 spinner 제거)
-                    with st.spinner("MedBLIP이 이미지 분석중.."):
-                        process_with_admin_agent("이미지를 업로드했습니다.", image, show_spinner=False)
+                    # Admin Agent에서 이미지 처리
+                    process_with_admin_agent("이미지를 업로드했습니다.", image)
 
 
-def process_with_admin_agent(user_input: str, image=None, show_spinner=True):
+def process_with_admin_agent(user_input: str, image=None):
     """Process user input with Admin Agent"""
     if st.session_state.admin_agent:
-        spinner_text = "Admin Agent가 처리 중입니다..." if show_spinner else None
+        with st.spinner("Admin Agent가 처리 중입니다..."):
+            try:
+                # Process user input directly (intake should already be started)
+                result = st.session_state.admin_agent.process_user_input(
+                    user_input, image
+                )
 
-        if show_spinner:
-            with st.spinner(spinner_text):
-                _execute_admin_processing(user_input, image)
-        else:
-            _execute_admin_processing(user_input, image)
+                if result["success"]:
+                    # Update session state
+                    st.session_state.current_stage = result["current_stage"]
+                    st.session_state.conversation_complete = result[
+                        "conversation_complete"
+                    ]
+
+                    # Add new messages
+                    new_messages = result["messages"]
+                    if new_messages:
+                        # Only add new messages (avoid duplicates)
+                        existing_count = len(st.session_state.messages)
+                        if len(new_messages) > existing_count:
+                            for msg in new_messages[existing_count:]:
+                                st.session_state.messages.append(msg)
+
+                    # Store case context if conversation is complete
+                    if (result["conversation_complete"] and
+                            result.get("case_context")):
+                        st.session_state.handoff_data = result["case_context"]
+
+                    st.rerun()
+                else:
+                    st.error(f"처리 중 오류 발생: {result['error']}")
+
+            except Exception as e:
+                st.error(f"Admin Agent 처리 중 예외 발생: {str(e)}")
     else:
         st.error("Admin Agent가 초기화되지 않았습니다.")
-
-
-def _execute_admin_processing(user_input: str, image=None):
-    """Execute admin agent processing without spinner wrapper"""
-    try:
-        # Process user input directly (intake should already be started)
-        result = st.session_state.admin_agent.process_user_input(
-            user_input, image
-        )
-
-        if result["success"]:
-            # Update session state
-            st.session_state.current_stage = result["current_stage"]
-            st.session_state.conversation_complete = result[
-                "conversation_complete"
-            ]
-
-            # Add new messages
-            new_messages = result["messages"]
-            if new_messages:
-                # Only add new messages (avoid duplicates)
-                existing_count = len(st.session_state.messages)
-                if len(new_messages) > existing_count:
-                    for msg in new_messages[existing_count:]:
-                        st.session_state.messages.append(msg)
-
-            # Store case context if conversation is complete
-            if (result["conversation_complete"] and
-                    result.get("case_context")):
-                st.session_state.handoff_data = result["case_context"]
-
-            st.rerun()
-        else:
-            st.error(f"처리 중 오류 발생: {result['error']}")
-
-    except Exception as e:
-        st.error(f"Admin Agent 처리 중 예외 발생: {str(e)}")
 
 
 def render_chat_interface():
@@ -244,9 +246,6 @@ def start_multi_agent_deliberation():
 
         # Start deliberation
         try:
-            # Update progress to deliberation stage
-            st.session_state.current_stage = "deliberation"
-
             with st.spinner("Multi-Agent 심의 진행 중..."):
                 result = st.session_state.supervisor_agent.start_deliberation(
                     session_id=st.session_state.session_id,
@@ -257,12 +256,8 @@ def start_multi_agent_deliberation():
                 st.session_state.deliberation_started = True
                 st.session_state.deliberation_result = result
 
-                # Update progress to completed when deliberation finishes
-                if result.get("success"):
-                    st.session_state.current_stage = "completed"
-
-                # Force rerun to update the sidebar status
-                st.rerun()
+                # Display results
+                display_deliberation_results(result)
 
         except Exception as e:
             st.error(f"Multi-Agent 심의 중 오류 발생: {str(e)}")
@@ -301,10 +296,10 @@ def display_deliberation_results(result):
                 st.markdown(f"{i}. {test}")
 
             st.markdown("**의학적 근거:**")
-            st.text_area("", final_decision.get("rationale", ""), height=200, disabled=True, key="medical_rationale")
+            st.text_area("", final_decision.get("rationale", ""), height=200, disabled=True)
 
         # Generate patient summary
-        if st.button("환자 친화적 요약 생성", type="primary", key="generate_summary_btn"):
+        if st.button("환자 친화적 요약 생성", type="primary"):
             generate_patient_summary(final_decision)
 
     else:
@@ -324,10 +319,10 @@ def generate_patient_summary(supervisor_decision):
                 st.subheader("📝 환자용 요약")
 
                 st.markdown("### 상담 결과")
-                st.markdown(patient_summary["summary_text"])
+                st.markdown(patient_summary.summary_text)
 
                 st.markdown("### ⚠️ 중요 안내사항")
-                for disclaimer in patient_summary["disclaimers"]:
+                for disclaimer in patient_summary.disclaimers:
                     st.warning(disclaimer)
 
         except Exception as e:
@@ -431,12 +426,7 @@ def main():
 
     # Display deliberation results if available
     if st.session_state.deliberation_result:
-        # Ensure status is set to completed when showing results
-        if (st.session_state.deliberation_result.get("success") and
-            st.session_state.current_stage != "completed"):
-            st.session_state.current_stage = "completed"
         display_deliberation_results(st.session_state.deliberation_result)
-
 
     # Display handoff data if available (development option)
     if st.checkbox(

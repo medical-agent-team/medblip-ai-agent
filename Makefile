@@ -38,7 +38,7 @@ docker-prod-up:
 	docker compose -f ./docker/docker-compose.yaml --profile prod up -d
 
 docker-prod-build:
-	docker compose -f ./docker/docker-compose.yaml --profile prod build
+	DOCKER_BUILDKIT=1 docker compose -f ./docker/docker-compose.yaml --profile prod build
 
 docker-prod-down:
 	docker compose -f ./docker/docker-compose.yaml --profile prod down

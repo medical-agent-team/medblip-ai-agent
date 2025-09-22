@@ -143,13 +143,52 @@ class ConversationManager:
         rr.supervisor_decision = decision
 
     def reached_consensus(self, session_id: str) -> bool:
+        """Check if consensus has been reached based on supervisor decision and doctor agreement"""
         st = self._require_session(session_id)
         rr = self._require_current_round(st)
         d = rr.supervisor_decision
+
         if not d:
             return False
-        # Minimal heuristic placeholder: consensus when >=1 hypothesis and >=1 prioritized test
-        return bool(d.get("consensus_hypotheses")) and bool(d.get("prioritized_tests"))
+
+        # Check if supervisor explicitly indicated consensus
+        if d.get("termination_reason"):
+            return True
+
+        # For multi-round consensus, check doctor opinion alignment
+        return self._check_doctor_consensus(rr)
+
+    def _check_doctor_consensus(self, round_record: RoundRecord) -> bool:
+        """Check if doctors have reached consensus on hypotheses and tests"""
+        opinions = list(round_record.doctor_opinions.values())
+        if len(opinions) < 3:
+            return False
+
+        # Extract all hypotheses and tests from doctors
+        all_hypotheses = []
+        all_tests = []
+
+        for opinion in opinions:
+            all_hypotheses.extend(opinion.get("hypotheses", []))
+            all_tests.extend(opinion.get("diagnostic_tests", []))
+
+        # Check for overlapping hypotheses (at least 2 doctors agree on same hypothesis)
+        hypothesis_counts = {}
+        for hypothesis in all_hypotheses:
+            normalized_hypothesis = hypothesis.lower().strip()
+            hypothesis_counts[normalized_hypothesis] = hypothesis_counts.get(normalized_hypothesis, 0) + 1
+
+        # Check for overlapping tests (at least 2 doctors agree on same test)
+        test_counts = {}
+        for test in all_tests:
+            normalized_test = test.lower().strip()
+            test_counts[normalized_test] = test_counts.get(normalized_test, 0) + 1
+
+        # Consensus criteria: at least 2 doctors agree on at least one hypothesis AND one test
+        hypothesis_consensus = any(count >= 2 for count in hypothesis_counts.values())
+        test_consensus = any(count >= 2 for count in test_counts.values())
+
+        return hypothesis_consensus and test_consensus
 
     # -- Lightweight validators / safety --
     def _validate_doctor_opinion(self, opinion: DoctorOpinion) -> None:

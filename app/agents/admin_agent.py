@@ -173,6 +173,8 @@ class AdminAgent:
             self._check_and_move_to_image()
         elif current_stage == "image_request":
             self._check_and_handle_image()
+        elif current_stage == "image_analysis":
+            self._check_and_handle_image()
 
         # 이미지가 업로드된 경우 즉시 분석 수행
         if (self.current_state.get("uploaded_image") and
@@ -221,6 +223,9 @@ class AdminAgent:
             # 이미지 분석 후 컨텍스트 준비
             result = self.admin_workflow._prepare_case_context_node(self.current_state)
             self.current_state.update(result)
+            # 분석 완료 상태로 업데이트
+            self.current_state["current_stage"] = "deliberation"
+            logger.info("✅ 이미지 분석 완료 - deliberation 단계로 이동")
         else:
             # 사용자가 이미지 없음을 선택한 경우
             user_messages = [
@@ -234,6 +239,9 @@ class AdminAgent:
                     logger.info("⏭️ 이미지 건너뛰기 - 최종 단계로 이동")
                     result = self.admin_workflow._prepare_case_context_node(self.current_state)
                     self.current_state.update(result)
+                    # 분석 완료 상태로 업데이트
+                    self.current_state["current_stage"] = "deliberation"
+                    logger.info("✅ 컨텍스트 준비 완료 - deliberation 단계로 이동")
 
     def _perform_image_analysis(self):
         """이미지 분석 수행"""
@@ -247,12 +255,17 @@ class AdminAgent:
             result = self.admin_workflow._prepare_case_context_node(self.current_state)
             self.current_state.update(result)
 
-            logger.info("✅ 이미지 분석 및 컨텍스트 준비 완료")
+            # 분석 완료 상태로 업데이트
+            self.current_state["current_stage"] = "deliberation"
+            logger.info("✅ 이미지 분석 및 컨텍스트 준비 완료 - deliberation 단계로 이동")
         except Exception as e:
             logger.error(f"❌ 이미지 분석 중 오류: {str(e)}")
             # 오류 발생 시 이미지 없이 진행
             result = self.admin_workflow._prepare_case_context_node(self.current_state)
             self.current_state.update(result)
+            # 분석 완료 상태로 업데이트
+            self.current_state["current_stage"] = "deliberation"
+            logger.info("✅ 컨텍스트 준비 완료 - deliberation 단계로 이동")
 
     def _extract_and_update_info(self, user_input: str):
         """사용자 입력에서 의료 정보 추출 및 상태 업데이트"""

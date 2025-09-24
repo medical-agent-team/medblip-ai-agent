@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.4
 FROM python:3.11.7-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -14,13 +15,18 @@ RUN apt-get update \
 RUN python -m pip install --upgrade pip \
  && pip install --no-cache-dir "poetry==${POETRY_VERSION}"
 
-COPY pyproject.toml poetry.lock* ./
+# lock 파일만 먼저 복사
+COPY pyproject.toml poetry.lock ./
 
-RUN poetry config virtualenvs.create true \
+# 캐시 마운트 활용한 poetry install
+RUN --mount=type=cache,target=/root/.cache/pip \
+    --mount=type=cache,target=/root/.cache/pypoetry \
+    poetry config virtualenvs.create true \
  && poetry config virtualenvs.in-project false \
  && poetry config virtualenvs.path /opt/venv \
  && poetry install --no-interaction --no-ansi --no-root
 
+# 이후 코드 복사
 COPY . .
 
 EXPOSE 8501

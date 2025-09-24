@@ -333,6 +333,7 @@ class AdminWorkflow:
                 }
 
                 state["medblip_findings"] = medblip_findings
+                state["current_stage"] = "image_analysis"
 
                 analysis_message = f"""
                 🔍 이미지 분석이 완료되었습니다!

@@ -154,6 +154,13 @@ class AdminAgent:
                 logger.info("🔄 다음 워크플로우 단계 실행 중...")
                 self._execute_next_workflow_step()
 
+                # Log current state after workflow step
+                logger.info(f"📊 [Admin] 워크플로우 진행 상태:")
+                logger.info(f"   - 현재 단계: {self.current_state.get('current_stage')}")
+                logger.info(f"   - 완료 여부: {self.current_state.get('conversation_complete')}")
+                if self.current_state.get('conversation_complete'):
+                    logger.info(f"   - 수집된 데이터: Demographics, History, Symptoms, MedBLIP findings")
+
             logger.info("✅ 사용자 입력 처리 완료")
             return self._format_response(success=True)
         except Exception as e:
@@ -371,9 +378,18 @@ class AdminAgent:
         prompt = ADMIN_PATIENT_SUMMARY_PROMPT.format(supervisor_decision=supervisor_decision)
 
         try:
+            # Log admin patient summary generation
+            logger.info("🏥 [Admin] 환자 친화적 요약 생성 중...")
+            logger.info(f"📝 Supervisor Decision Input: {supervisor_decision}")
+
             response = self.llm.invoke([HumanMessage(content=prompt)])
             summary_text = response.content
-        except Exception:
+
+            # Log generated summary
+            logger.info("📊 [Admin] 생성된 환자 요약:")
+            logger.info(f"📝 Summary Text: {summary_text[:300]}...")
+
+        except Exception as e:
             # LLM 오류 시 기본 템플릿 사용
             return self._create_offline_patient_summary(supervisor_decision)
 

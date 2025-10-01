@@ -54,8 +54,8 @@ class SupervisorAgent:
             temperature=0.3  # 일관성을 위해 낮은 온도
         )
 
-        # ConversationManager 초기화
-        self.conversation_manager = ConversationManager(max_rounds=13)
+        # ConversationManager 초기화 (7라운드로 변경)
+        self.conversation_manager = ConversationManager(max_rounds=7)
 
         logger.info("✅ SupervisorAgent 초기화 완료")
 
@@ -83,7 +83,7 @@ class SupervisorAgent:
         session_state = self.conversation_manager.start_session(session_id, case_context)
 
         try:
-            # 최대 13라운드까지 반복
+            # 정확히 7라운드까지 반복 (조기 종료 없음)
             while not session_state.terminated and session_state.current_round < session_state.max_rounds:
                 logger.info(f"🔄 라운드 {session_state.current_round + 1} 시작")
 
@@ -100,18 +100,18 @@ class SupervisorAgent:
                     session_id, case_context, doctor_opinions, round_number
                 )
 
-                # 합의 확인
-                if self.conversation_manager.reached_consensus(session_id):
-                    logger.info("✅ 합의 도달 - 심의 종료")
-                    self.conversation_manager.end_session(session_id, "합의 도달")
-                    break
+                # 조기 종료 로직 주석 처리 - 무조건 7라운드 실행
+                # if self.conversation_manager.reached_consensus(session_id):
+                #     logger.info("✅ 합의 도달 - 심의 종료")
+                #     self.conversation_manager.end_session(session_id, "합의 도달")
+                #     break
 
                 # 세션 상태 업데이트
                 session_state = self.conversation_manager.get_session(session_id)
 
             if not session_state.terminated:
-                logger.info("⏰ 최대 라운드 도달 - 심의 종료")
-                self.conversation_manager.end_session(session_id, "최대 라운드 도달")
+                logger.info("⏰ 7라운드 완료 - 심의 종료")
+                self.conversation_manager.end_session(session_id, "7라운드 완료")
 
             return self._format_deliberation_result(session_id)
 
@@ -189,8 +189,19 @@ class SupervisorAgent:
                 HumanMessage(content=consensus_prompt)
             ])
 
+            # Log supervisor output
+            logger.info(f"🎯 [Supervisor] 라운드 {round_number} 합의 분석 결과:")
+            logger.info(f"📝 Raw LLM Response: {response.content}")
+
             # 응답 파싱
             decision = self._parse_supervisor_response(response.content, round_number)
+
+            # Log parsed decision
+            logger.info(f"📊 [Supervisor] 파싱된 결정:")
+            logger.info(f"   - 합의 가설: {decision.get('consensus_hypotheses', [])}")
+            logger.info(f"   - 우선 검사: {decision.get('prioritized_tests', [])}")
+            logger.info(f"   - 종료 여부: {decision.get('termination_reason', 'None')}")
+            logger.info(f"   - 근거: {decision.get('rationale', '')[:200]}...")
 
             # 결정 기록
             self.conversation_manager.record_supervisor_decision(session_id, decision)

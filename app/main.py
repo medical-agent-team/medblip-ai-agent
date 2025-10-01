@@ -8,9 +8,18 @@ import streamlit as st
 import os
 from PIL import Image
 from dotenv import load_dotenv
+import logging
 
 # Load environment variables
 load_dotenv()
+
+# Enable LangChain verbose logging
+os.environ["LANGCHAIN_VERBOSE"] = "true"
+os.environ["LANGCHAIN_TRACING_V2"] = "false"
+
+# Set up basic logging for agent outputs
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+agent_logger = logging.getLogger("AGENT_OUTPUT")
 
 from app.agents.admin_agent import AdminAgent
 from app.agents.supervisor_agent import SupervisorAgent

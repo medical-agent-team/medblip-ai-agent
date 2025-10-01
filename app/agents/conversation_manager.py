@@ -67,7 +67,7 @@ class SessionState:
     session_id: str
     context: CaseContext
     current_round: int = 0
-    max_rounds: int = 13
+    max_rounds: int = 7
     rounds: List[RoundRecord] = field(default_factory=list)
     terminated: bool = False
     termination_reason: Optional[str] = None
@@ -95,7 +95,7 @@ class DoctorNode(Protocol):
 class ConversationManager:
     """Centralizes session lifecycle, validation, and round bookkeeping."""
 
-    def __init__(self, *, max_rounds: int = 13) -> None:
+    def __init__(self, *, max_rounds: int = 7) -> None:
         self.max_rounds = max_rounds
         self._sessions: Dict[str, SessionState] = {}
 

@@ -12,16 +12,12 @@ from PIL import Image
 from langgraph.graph import StateGraph, START, END
 
 from app.agents.conversation_manager import CaseContext
+from app.agents.shared_state import SharedMedicalState, StateManager
 from app.tools.medblip_tool import MedBLIPTool
 
 
-class AdminWorkflowState(CaseContext, total=False):
-    """Admin Agent 워크플로우 상태 - CaseContext 확장"""
-    messages: list[Dict[str, Any]]
-    current_stage: str
-    uploaded_image: Optional[Image.Image]
-    conversation_complete: bool
-    error_message: Optional[str]
+# AdminWorkflowState는 이제 SharedMedicalState를 사용합니다
+AdminWorkflowState = SharedMedicalState
 
 
 class AdminWorkflow:
@@ -33,7 +29,7 @@ class AdminWorkflow:
 
     def _create_workflow(self) -> StateGraph:
         """LangGraph 워크플로우 생성"""
-        workflow = StateGraph(AdminWorkflowState)
+        workflow = StateGraph(SharedMedicalState)
 
         # 노드 추가
         workflow.add_node("greeting", self._greeting_node)
@@ -120,7 +116,7 @@ class AdminWorkflow:
 
         return workflow.compile()
 
-    def _greeting_node(self, state: AdminWorkflowState) -> AdminWorkflowState:
+    def _greeting_node(self, state: SharedMedicalState) -> SharedMedicalState:
         """인사 및 서비스 소개"""
         # greeting 메시지가 이미 추가되었는지 확인
         messages = state.get("messages", [])

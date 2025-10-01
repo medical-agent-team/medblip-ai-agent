@@ -20,6 +20,10 @@ from langchain_openai import ChatOpenAI
 from app.agents.conversation_manager import CaseContext, PatientSummary
 from app.agents.admin_workflow import AdminWorkflow, AdminWorkflowState
 from app.tools.medblip_tool import MedBLIPTool
+from app.agents.prompts.admin_prompts import (
+    ADMIN_PATIENT_SUMMARY_PROMPT,
+    ADMIN_SAFETY_DISCLAIMERS
+)
 
 # Docker 로그에서 확인 가능한 로거 설정
 logger = logging.getLogger(__name__)
@@ -364,19 +368,7 @@ class AdminAgent:
             return self._create_offline_patient_summary(supervisor_decision)
 
         # LLM을 사용한 환자 친화적 재작성
-        prompt = f"""
-다음 의료 전문가 합의 결과를 환자가 이해하기 쉬운 한국어로 재작성해주세요.
-
-전문가 합의 결과:
-{supervisor_decision}
-
-재작성 원칙:
-1. 전문 용어를 일반인이 이해할 수 있는 언어로 변경
-2. 불확실성과 리스크 프레이밍 포함
-3. 전문의 상담 받을 것을 권고
-4. 응급상황에서는 즉시 응급실 방문 안내
-5. 교육 및 참고 목적임을 명시
-        """
+        prompt = ADMIN_PATIENT_SUMMARY_PROMPT.format(supervisor_decision=supervisor_decision)
 
         try:
             response = self.llm.invoke([HumanMessage(content=prompt)])
@@ -387,12 +379,7 @@ class AdminAgent:
 
         return PatientSummary(
             summary_text=summary_text,
-            disclaimers=[
-                "이 상담 결과는 교육 및 참고 목적입니다.",
-                "확정적 진단이나 치료를 제공하지 않습니다.",
-                "반드시 전문의와 상담하시기 바랍니다.",
-                "응급상황에서는 즉시 119를 호출하거나 응급실을 방문하세요."
-            ]
+            disclaimers=ADMIN_SAFETY_DISCLAIMERS
         )
 
     def _create_offline_patient_summary(
@@ -423,12 +410,7 @@ class AdminAgent:
 
         return PatientSummary(
             summary_text=summary_text.strip(),
-            disclaimers=[
-                "이 상담 결과는 교육 및 참고 목적입니다.",
-                "확정적 진단이나 치료를 제공하지 않습니다.",
-                "반드시 전문의와 상담하시기 바랍니다.",
-                "응급상황에서는 즉시 119를 호출하거나 응급실을 방문하세요."
-            ]
+            disclaimers=ADMIN_SAFETY_DISCLAIMERS
         )
 
     def reset(self):

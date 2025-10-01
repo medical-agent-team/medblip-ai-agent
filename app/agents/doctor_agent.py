@@ -140,8 +140,20 @@ class DoctorAgent:
             HumanMessage(content=analysis_prompt)
         ])
 
+        # Log doctor output
+        logger.info(f"🩺 [{self.doctor_id}] 라운드 {round_number} 초기 분석 결과:")
+        logger.info(f"📝 Raw LLM Response: {response.content}")
+
         # 응답 파싱
-        return self._parse_doctor_response(response.content, round_number)
+        parsed_opinion = self._parse_doctor_response(response.content, round_number)
+
+        # Log parsed opinion
+        logger.info(f"📊 [{self.doctor_id}] 파싱된 의견:")
+        logger.info(f"   - 가설: {parsed_opinion.get('hypotheses', [])}")
+        logger.info(f"   - 진단검사: {parsed_opinion.get('diagnostic_tests', [])}")
+        logger.info(f"   - 추론: {parsed_opinion.get('reasoning', '')[:200]}...")
+
+        return parsed_opinion
 
     def _provide_updated_opinion(self,
                                 case_context: CaseContext,
@@ -169,8 +181,20 @@ class DoctorAgent:
             HumanMessage(content=update_prompt)
         ])
 
+        # Log doctor output for update
+        logger.info(f"🔄 [{self.doctor_id}] 라운드 {round_number} 업데이트 분석 결과:")
+        logger.info(f"📝 Raw LLM Response: {response.content}")
+
         # 응답 파싱
-        return self._parse_doctor_response(response.content, round_number, is_update=True)
+        parsed_opinion = self._parse_doctor_response(response.content, round_number, is_update=True)
+
+        # Log parsed updated opinion
+        logger.info(f"📊 [{self.doctor_id}] 업데이트된 의견:")
+        logger.info(f"   - 가설: {parsed_opinion.get('hypotheses', [])}")
+        logger.info(f"   - 진단검사: {parsed_opinion.get('diagnostic_tests', [])}")
+        logger.info(f"   - 동료 비판: {parsed_opinion.get('critique_of_peers', '')[:100]}...")
+
+        return parsed_opinion
 
     def _build_initial_analysis_prompt(self, case_context: CaseContext) -> str:
         """초기 분석을 위한 프롬프트 구성"""

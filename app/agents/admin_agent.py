@@ -374,15 +374,40 @@ class AdminAgent:
             # 오프라인 모드: 기본 템플릿 사용
             return self._create_offline_patient_summary(supervisor_decision)
 
-        # LLM을 사용한 환자 친화적 재작성
-        prompt = ADMIN_PATIENT_SUMMARY_PROMPT.format(supervisor_decision=supervisor_decision)
+        # LLM을 사용한 환자 친화적 재작성 (영어 -> 한국어 번역 추가)
+        translate_prompt = f"""
+        Translate the following medical consultation results to Korean in a patient-friendly manner.
+
+        Medical Expert Consensus:
+        {supervisor_decision}
+
+        Translation Guidelines:
+        1. Use patient-friendly Korean language (avoid complex medical terms)
+        2. Maintain all important medical information
+        3. Keep the safety warnings and recommendations clear
+        4. Format the output in a clear, structured way
+
+        Provide the translation in the following format:
+
+        **상담 결과 요약**
+        [Patient-friendly summary in Korean]
+
+        **권장 사항**
+        [Recommendations in Korean]
+
+        **주의 사항**
+        [Precautions in Korean]
+
+        **다음 단계**
+        [Next steps in Korean]
+        """
 
         try:
             # Log admin patient summary generation
             logger.info("🏥 [Admin] 환자 친화적 요약 생성 중...")
             logger.info(f"📝 Supervisor Decision Input: {supervisor_decision}")
 
-            response = self.llm.invoke([HumanMessage(content=prompt)])
+            response = self.llm.invoke([HumanMessage(content=translate_prompt)])
             summary_text = response.content
 
             # Log generated summary
@@ -390,12 +415,21 @@ class AdminAgent:
             logger.info(f"📝 Summary Text: {summary_text[:300]}...")
 
         except Exception as e:
+            logger.error(f"❌ LLM 요약 생성 실패: {str(e)}")
             # LLM 오류 시 기본 템플릿 사용
             return self._create_offline_patient_summary(supervisor_decision)
 
+        # 한국어 면책 조항으로 변환
+        korean_disclaimers = [
+            "이 상담 결과는 교육 및 참고 목적입니다.",
+            "확정적 진단이나 치료를 제공하지 않습니다.",
+            "반드시 전문의와 상담하시기 바랍니다.",
+            "응급상황에서는 즉시 119를 호출하거나 응급실을 방문하세요."
+        ]
+
         return PatientSummary(
             summary_text=summary_text,
-            disclaimers=ADMIN_SAFETY_DISCLAIMERS
+            disclaimers=korean_disclaimers
         )
 
     def _create_offline_patient_summary(

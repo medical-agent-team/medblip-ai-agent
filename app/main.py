@@ -9,6 +9,15 @@ import os
 from PIL import Image
 from dotenv import load_dotenv
 import logging
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.lib.enums import TA_LEFT, TA_CENTER
+from datetime import datetime
+import io
 
 # Load environment variables
 load_dotenv()
@@ -316,6 +325,11 @@ def display_deliberation_results(result):
         if st.button("환자 친화적 요약 생성", type="primary", key="generate_summary_btn"):
             generate_patient_summary(final_decision)
 
+        # Show PDF generation button after summary is generated
+        if "patient_summary" in st.session_state and st.session_state.patient_summary:
+            if st.button("📄 PDF 생성", type="secondary", key="generate_pdf_btn"):
+                generate_patient_pdf()
+
     else:
         st.error(f"Multi-Agent 심의 실패: {result.get('error', 'Unknown error')}")
 
@@ -328,6 +342,9 @@ def generate_patient_summary(supervisor_decision):
                 patient_summary = st.session_state.admin_agent.create_patient_summary(
                     supervisor_decision
                 )
+
+                # Store patient summary in session state for PDF generation
+                st.session_state.patient_summary = patient_summary
 
                 st.markdown("---")
                 st.subheader("📝 환자용 요약")
@@ -343,6 +360,182 @@ def generate_patient_summary(supervisor_decision):
             st.error(f"환자 요약 생성 중 오류 발생: {str(e)}")
     else:
         st.error("Admin Agent가 초기화되지 않았습니다.")
+
+
+def generate_patient_pdf():
+    """Generate PDF with patient basic info and patient-friendly summary"""
+    try:
+        # Create a PDF buffer
+        buffer = io.BytesIO()
+
+        # Create PDF document
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=letter,
+            rightMargin=72,
+            leftMargin=72,
+            topMargin=72,
+            bottomMargin=18
+        )
+
+        # Container for PDF elements
+        elements = []
+
+        # Register Korean font (Noto Sans KR)
+        try:
+            # Get the absolute path to the font file in the project root
+            # Use multiple methods to find the project root
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            project_root = os.path.dirname(current_dir)
+            font_path = os.path.join(project_root, 'NotoSansKR-Regular.ttf')
+
+            # If not found, try current working directory
+            if not os.path.exists(font_path):
+                font_path = os.path.join(os.getcwd(), 'NotoSansKR-Regular.ttf')
+
+            if os.path.exists(font_path):
+                pdfmetrics.registerFont(TTFont('NotoSansKR', font_path))
+                korean_font = 'NotoSansKR'
+            else:
+                raise FileNotFoundError(f"Font file not found at: {font_path}")
+        except Exception as e:
+            # If font file not found, use default
+            korean_font = 'Helvetica'
+            st.warning(f"한글 폰트를 찾을 수 없어 기본 폰트를 사용합니다. 경로: {font_path if 'font_path' in locals() else 'unknown'}. Error: {str(e)}")
+
+        # Define styles
+        styles = getSampleStyleSheet()
+
+        # Title style
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontName=korean_font,
+            fontSize=24,
+            textColor='#1f4788',
+            spaceAfter=30,
+            alignment=TA_CENTER
+        )
+
+        # Heading style
+        heading_style = ParagraphStyle(
+            'CustomHeading',
+            parent=styles['Heading2'],
+            fontName=korean_font,
+            fontSize=16,
+            textColor='#2c5aa0',
+            spaceAfter=12,
+            spaceBefore=12
+        )
+
+        # Body style
+        body_style = ParagraphStyle(
+            'CustomBody',
+            parent=styles['BodyText'],
+            fontName=korean_font,
+            fontSize=11,
+            leading=16,
+            spaceAfter=12
+        )
+
+        # Warning style
+        warning_style = ParagraphStyle(
+            'Warning',
+            parent=styles['BodyText'],
+            fontName=korean_font,
+            fontSize=10,
+            textColor='#856404',
+            leftIndent=20,
+            spaceAfter=8
+        )
+
+        # Add title
+        elements.append(Paragraph("의료 상담 결과 보고서", title_style))
+        elements.append(Spacer(1, 0.2*inch))
+
+        # Add generation date
+        date_str = datetime.now().strftime("%Y년 %m월 %d일 %H:%M")
+        elements.append(Paragraph(f"생성일시: {date_str}", body_style))
+        elements.append(Spacer(1, 0.3*inch))
+
+        # Add patient basic information
+        elements.append(Paragraph("환자 기본 정보", heading_style))
+
+        if st.session_state.handoff_data:
+            demographics = st.session_state.handoff_data.get("demographics", {})
+            if demographics and demographics.get("raw_input"):
+                elements.append(Paragraph(f"인구학적 정보: {demographics.get('raw_input', 'N/A')}", body_style))
+
+            history = st.session_state.handoff_data.get("history", {})
+            if history and history.get("raw_input"):
+                elements.append(Paragraph(f"과거 병력: {history.get('raw_input', 'N/A')}", body_style))
+
+            symptoms = st.session_state.handoff_data.get("symptoms", {})
+            if symptoms and symptoms.get("raw_input"):
+                elements.append(Paragraph(f"현재 증상: {symptoms.get('raw_input', 'N/A')}", body_style))
+
+            meds = st.session_state.handoff_data.get("meds", {})
+            if meds and meds.get("raw_input"):
+                elements.append(Paragraph(f"복용 약물: {meds.get('raw_input', 'N/A')}", body_style))
+
+        elements.append(Spacer(1, 0.3*inch))
+
+        # Add patient summary
+        if st.session_state.patient_summary:
+            elements.append(Paragraph("상담 결과 요약", heading_style))
+
+            # Clean and format summary text
+            summary_text = st.session_state.patient_summary.get("summary_text", "")
+            # Remove markdown formatting for PDF
+            summary_text = summary_text.replace("**", "").replace("###", "").replace("##", "")
+
+            # Split into paragraphs and add each
+            for para in summary_text.split('\n'):
+                if para.strip():
+                    elements.append(Paragraph(para.strip(), body_style))
+
+            elements.append(Spacer(1, 0.3*inch))
+
+            # Add disclaimers
+            elements.append(Paragraph("중요 안내사항", heading_style))
+            disclaimers = st.session_state.patient_summary.get("disclaimers", [])
+            for disclaimer in disclaimers:
+                elements.append(Paragraph(f"• {disclaimer}", warning_style))
+
+        elements.append(Spacer(1, 0.5*inch))
+
+        # Add footer
+        footer_style = ParagraphStyle(
+            'Footer',
+            parent=styles['Normal'],
+            fontName=korean_font,
+            fontSize=9,
+            textColor='#666666',
+            alignment=TA_CENTER
+        )
+        elements.append(Paragraph("본 문서는 Multi-Agent 의료 상담 시스템에서 생성되었습니다.", footer_style))
+        elements.append(Paragraph("세션 ID: " + st.session_state.session_id, footer_style))
+
+        # Build PDF
+        doc.build(elements)
+
+        # Get PDF data
+        pdf_data = buffer.getvalue()
+        buffer.close()
+
+        # Offer download
+        st.download_button(
+            label="📥 PDF 다운로드",
+            data=pdf_data,
+            file_name=f"medical_consultation_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
+            mime="application/pdf"
+        )
+
+        st.success("PDF가 성공적으로 생성되었습니다!")
+
+    except Exception as e:
+        st.error(f"PDF 생성 중 오류 발생: {str(e)}")
+        logger.error(f"PDF generation error: {str(e)}")
 
 
 def display_handoff_data():

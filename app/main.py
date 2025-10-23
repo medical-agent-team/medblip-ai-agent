@@ -9,6 +9,7 @@ import os
 from PIL import Image
 from dotenv import load_dotenv
 import logging
+from typing import Dict, Any
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
@@ -362,6 +363,70 @@ def generate_patient_summary(supervisor_decision):
         st.error("Admin Agent가 초기화되지 않았습니다.")
 
 
+def generate_basic_info_summary(handoff_data: Dict[str, Any]) -> str:
+    """Generate LLM summary for patient basic information"""
+    if not st.session_state.admin_agent or not st.session_state.admin_agent.llm:
+        return ""
+
+    try:
+        # Prepare basic info for summarization
+        demographics = handoff_data.get("demographics", {}).get("raw_input", "정보 없음")
+        history = handoff_data.get("history", {}).get("raw_input", "정보 없음")
+        symptoms = handoff_data.get("symptoms", {}).get("raw_input", "정보 없음")
+        meds = handoff_data.get("meds", {}).get("raw_input", "정보 없음")
+
+        prompt = f"""다음은 환자의 기본 정보입니다. 이 정보를 바탕으로 환자의 상태를 매우 간단히 요약해주세요.
+
+인구학적 정보: {demographics}
+과거 병력: {history}
+현재 증상: {symptoms}
+복용 약물: {meds}
+
+위 정보를 바탕으로:
+1. 환자의 핵심 특징만 1-2줄로 요약 (최대 2문장)
+2. 가장 중요한 사항만 간략히 언급
+3. 의학적 용어는 간단한 한국어로 설명
+
+요약은 매우 짧고 간결하게 작성해주세요."""
+
+        from langchain_core.messages import HumanMessage
+        response = st.session_state.admin_agent.llm.invoke([HumanMessage(content=prompt)])
+        return response.content.strip()
+
+    except Exception as e:
+        logger.error(f"기본 정보 요약 생성 중 오류: {str(e)}")
+        return ""
+
+
+def generate_consultation_summary(patient_summary: Dict[str, Any]) -> str:
+    """Generate LLM summary for consultation results"""
+    if not st.session_state.admin_agent or not st.session_state.admin_agent.llm:
+        return ""
+
+    try:
+        summary_text = patient_summary.get("summary_text", "")
+
+        prompt = f"""다음은 의료 상담 결과입니다. 이 내용을 바탕으로 핵심 내용만 매우 간단히 요약해주세요.
+
+상담 결과:
+{summary_text}
+
+위 내용을 바탕으로:
+1. 핵심 진단 가능성을 2-3줄로 요약 (최대 3문장)
+2. 가장 중요한 권장 조치만 간략히 언급
+3. 필수 주의사항만 짧게 강조
+
+요약은 매우 짧고 간결하게 작성하되, 정확성을 유지해주세요."""
+
+        from langchain_core.messages import HumanMessage
+        response = st.session_state.admin_agent.llm.invoke([HumanMessage(content=prompt)])
+        return response.content.strip()
+
+    except Exception as e:
+        logger.error(f"상담 결과 요약 생성 중 오류: {str(e)}")
+        return ""
+
+
 def generate_patient_pdf():
     """Generate PDF with patient basic info and patient-friendly summary"""
     try:
@@ -438,6 +503,20 @@ def generate_patient_pdf():
             spaceAfter=12
         )
 
+        # Summary style (for LLM-generated summaries)
+        summary_style = ParagraphStyle(
+            'Summary',
+            parent=styles['BodyText'],
+            fontName=korean_font,
+            fontSize=11,
+            leading=16,
+            textColor='#2c3e50',
+            leftIndent=10,
+            rightIndent=10,
+            spaceAfter=12,
+            spaceBefore=8
+        )
+
         # Warning style
         warning_style = ParagraphStyle(
             'Warning',
@@ -478,11 +557,25 @@ def generate_patient_pdf():
             if meds and meds.get("raw_input"):
                 elements.append(Paragraph(f"복용 약물: {meds.get('raw_input', 'N/A')}", body_style))
 
+            # Generate LLM summary for patient basic information
+            if st.session_state.admin_agent and st.session_state.admin_agent.llm:
+                try:
+                    with st.spinner("기본 정보 요약 생성 중..."):
+                        basic_info_summary = generate_basic_info_summary(st.session_state.handoff_data)
+                        if basic_info_summary:
+                            elements.append(Spacer(1, 0.2*inch))
+                            elements.append(Paragraph("기본 정보 요약", heading_style))
+                            for para in basic_info_summary.split('\n'):
+                                if para.strip():
+                                    elements.append(Paragraph(para.strip(), summary_style))
+                except Exception as e:
+                    logger.error(f"기본 정보 요약 생성 실패: {str(e)}")
+
         elements.append(Spacer(1, 0.3*inch))
 
         # Add patient summary
         if st.session_state.patient_summary:
-            elements.append(Paragraph("상담 결과 요약", heading_style))
+            elements.append(Paragraph("상담 결과", heading_style))
 
             # Clean and format summary text
             summary_text = st.session_state.patient_summary.get("summary_text", "")
@@ -493,6 +586,20 @@ def generate_patient_pdf():
             for para in summary_text.split('\n'):
                 if para.strip():
                     elements.append(Paragraph(para.strip(), body_style))
+
+            # Generate LLM summary for consultation results
+            if st.session_state.admin_agent and st.session_state.admin_agent.llm:
+                try:
+                    with st.spinner("상담 결과 요약 생성 중..."):
+                        consultation_summary = generate_consultation_summary(st.session_state.patient_summary)
+                        if consultation_summary:
+                            elements.append(Spacer(1, 0.2*inch))
+                            elements.append(Paragraph("상담 결과 요약", heading_style))
+                            for para in consultation_summary.split('\n'):
+                                if para.strip():
+                                    elements.append(Paragraph(para.strip(), summary_style))
+                except Exception as e:
+                    logger.error(f"상담 결과 요약 생성 실패: {str(e)}")
 
             elements.append(Spacer(1, 0.3*inch))
 

@@ -200,31 +200,31 @@ class DoctorAgent:
         """초기 분석을 위한 프롬프트 구성"""
 
         prompt = f"""
-        환자 사례 분석
+                Patient Case Analysis
 
-        **환자 정보:**
-        - 인구학적 정보: {case_context.get('demographics', {})}
-        - 현재 증상: {case_context.get('symptoms', {})}
-        - 과거 병력: {case_context.get('history', {})}
-        - 복용 약물: {case_context.get('meds', {})}
-        - 활력 징후: {case_context.get('vitals', {})}
+        **Patient Information:**
+        - Demographics: {case_context.get('demographics', {})}
+        - Current Symptoms: {case_context.get('symptoms', {})}
+        - Past Medical History: {case_context.get('history', {})}
+        - Medications: {case_context.get('meds', {})}
+        - Vital Signs: {case_context.get('vitals', {})}
 
-        **영상 소견 (MedBLIP 분석):**
+        **Imaging Findings (MedBLIP Analysis):**
         {case_context.get('medblip_findings', {})}
 
-        **추가 정보:**
+        **Additional Information:**
         {case_context.get('free_text', '')}
 
-        위 정보를 바탕으로 다음을 제공해주세요:
-        1. 가능한 진단 가설들 (우선순위순)
-        2. 권장되는 진단 검사들 (우선순위순)
-        3. 임상적 추론 과정
-        4. 주요 고려사항 및 감별 진단
+        Based on the above information, please provide:
+        1. Possible diagnostic hypotheses (in order of priority)
+        2. Recommended diagnostic tests (in order of priority)
+        3. Clinical reasoning process
+        4. Key considerations and differential diagnoses
 
-        **중요:**
-        - 확정적 진단이 아닌 가설로 제시
-        - 환자 안전을 최우선 고려
-        - 추가 검사의 필요성 강조
+        **Important:**
+        - Provide hypotheses, not definitive diagnoses
+        - Prioritize patient safety
+        - Emphasize the need for additional testing
         """
 
         return prompt

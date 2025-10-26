@@ -1,0 +1,21 @@
+나이: 52세  
+성별: 남성  
+직업: 목축업 종사자  
+
+기존에 진단받은 질환: 간 포충낭(hydatid cyst) (5년 전 진단)  
+과거 수술이나 입원 경험: 5년 전 포충낭 발견 후 약물 치료(알벤다졸), 수술 없음  
+알레르기: 없음  
+가족 중 특별한 질환: 없음  
+
+어떤 증상: 오른쪽 윗배 통증, 미열  
+언제부터: 3일 전부터  
+증상의 강도(1–10점): 5점  
+증상의 양상(지속적/간헐적/악화/호전): 간헐적 통증, 최근 빈도 증가  
+증상이 악화되거나 완화되는 특정 상황: 식사 후 통증 악화  
+동반되는 다른 증상: 피로감, 식욕 저하, 메스꺼움  
+
+처방약이 있으신가요?: 알벤다졸 400mg 1일 2회 (5년 전 3개월 복용)  
+일반의약품이나 건강기능식품을 드시나요?: 비타민 C  
+한약이나 민간요법을 사용하시나요?: 없음
+
+label: Axial unenhanced CT-scan performed a few years before the superinfection shows the hepatic hydatid cyst (asterisk) with calcified wall in segment VI.

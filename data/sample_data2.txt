@@ -1,0 +1,21 @@
+나이: 6세  
+성별: 남아  
+직업: 유치원생  
+
+기존에 진단받은 질환: 선천성 심기형 (폐동맥 협착 의심)  
+과거 수술이나 입원 경험: 신생아 시기 심초음파 추적 관찰, 수술 경험 없음  
+알레르기: 없음  
+가족 중 특별한 질환: 없음  
+
+어떤 증상: 운동 시 숨참, 입술과 손끝이 파래짐(청색증)  
+언제부터: 생후부터 지속적, 최근 1개월 사이 악화  
+증상의 강도(1–10점): 6점  
+증상의 양상(지속적/간헐적/악화/호전): 지속적이며 점차 악화  
+증상이 악화되거나 완화되는 특정 상황: 계단 오르기나 달리기 시 악화, 휴식 시 완화  
+동반되는 다른 증상: 쉽게 피로함, 식사 중 숨이 차다고 표현  
+
+처방약이 있으신가요?: 없음 (심장 전문의 추적 관찰 중)  
+일반의약품이나 건강기능식품을 드시나요?: 없음  
+한약이나 민간요법을 사용하시나요?: 없음
+
+label: An angiography image showing two aortopulmonary arteries connecting the descending aorta and the right pulmonary artery, and one collateral artery connecting the descending aorta and the left pulmonary artery

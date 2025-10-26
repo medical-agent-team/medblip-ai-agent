@@ -1,0 +1,21 @@
+나이: 58세  
+성별: 남성  
+직업: 공무원  
+
+기존에 진단받은 질환: 고혈압, 당뇨병  
+과거 수술이나 입원 경험: 3주 전 교통사고로 우측 흉부 외상, 흉관삽입술 시행  
+알레르기: 없음  
+가족 중 특별한 질환: 부 – 심근경색  
+
+어떤 증상: 호흡곤란, 우측 흉통, 기침 시 통증  
+언제부터: 2일 전부터 악화  
+증상의 강도(1–10점): 7점  
+증상의 양상(지속적/간헐적/악화/호전): 지속적이며 점차 악화  
+증상이 악화되거나 완화되는 특정 상황: 누운 자세에서 악화, 기침 시 통증 증가  
+동반되는 다른 증상: 가벼운 발열, 피로감, 식욕 저하  
+
+처방약이 있으신가요?: 고혈압약(암로디핀 5mg), 당뇨약(메트포르민 500mg), 진통제(아세트아미노펜)  
+일반의약품이나 건강기능식품을 드시나요?: 비타민 B, 유산균  
+한약이나 민간요법을 사용하시나요?: 없음
+
+label: CTA of chest revealing large residual clot in the right hemi-thorax. This study was performed in an attempt to localize the bleeding source in our patient. The study was negative in terms of identifying an anatomic source of bleeding (most relevant with respect to examination of the great vessels in the thoracic outlet, albeit falsely negative). However, this study served as a proxy for the post-thoracostomy chest x-ray and identified the insufficient drainage of the right chest with the thorocostomy tube in place.

@@ -383,11 +383,11 @@ def generate_basic_info_summary(handoff_data: Dict[str, Any]) -> str:
 복용 약물: {meds}
 
 위 정보를 바탕으로:
-1. 환자의 핵심 특징만 1-2줄로 요약 (최대 2문장)
+1. 환자의 핵심 특징만 1-2줄로 요약 (최대 4문장)
 2. 가장 중요한 사항만 간략히 언급
 3. 의학적 용어는 간단한 한국어로 설명
-
-요약은 매우 짧고 간결하게 작성해주세요."""
+4. 약물과 과거 병력, 증상, 인구학적 정보를 모두 빠짐없이 반영
+요약은 짧고 간결하게 작성해주세요."""
 
         from langchain_core.messages import HumanMessage
         response = st.session_state.admin_agent.llm.invoke([HumanMessage(content=prompt)])
@@ -406,9 +406,9 @@ def generate_consultation_summary(patient_summary: Dict[str, Any]) -> str:
     try:
         summary_text = patient_summary.get("summary_text", "")
 
-        prompt = f"""다음은 의료 상담 결과입니다. 이 내용을 바탕으로 핵심 내용만 매우 간단히 요약해주세요.
+        prompt = f"""다음은 의료 토론 결과입니다. 이 내용을 바탕으로 핵심 내용만 매우 간단히 요약해주세요.
 
-상담 결과:
+토론 결과:
 {summary_text}
 
 위 내용을 바탕으로:
@@ -564,7 +564,7 @@ def generate_patient_pdf():
                         basic_info_summary = generate_basic_info_summary(st.session_state.handoff_data)
                         if basic_info_summary:
                             elements.append(Spacer(1, 0.2*inch))
-                            elements.append(Paragraph("기본 정보 요약", heading_style))
+                            elements.append(Paragraph("환자 기본 정보 요약", heading_style))
                             for para in basic_info_summary.split('\n'):
                                 if para.strip():
                                     elements.append(Paragraph(para.strip(), summary_style))
@@ -575,7 +575,7 @@ def generate_patient_pdf():
 
         # Add patient summary
         if st.session_state.patient_summary:
-            elements.append(Paragraph("상담 결과", heading_style))
+            elements.append(Paragraph("토론 요약", heading_style))
 
             # Clean and format summary text
             summary_text = st.session_state.patient_summary.get("summary_text", "")
@@ -590,7 +590,7 @@ def generate_patient_pdf():
             # Generate LLM summary for consultation results
             if st.session_state.admin_agent and st.session_state.admin_agent.llm:
                 try:
-                    with st.spinner("상담 결과 요약 생성 중..."):
+                    with st.spinner("토론 결과 요약 생성 중..."):
                         consultation_summary = generate_consultation_summary(st.session_state.patient_summary)
                         if consultation_summary:
                             elements.append(Spacer(1, 0.2*inch))
@@ -599,7 +599,7 @@ def generate_patient_pdf():
                                 if para.strip():
                                     elements.append(Paragraph(para.strip(), summary_style))
                 except Exception as e:
-                    logger.error(f"상담 결과 요약 생성 실패: {str(e)}")
+                    logger.error(f"토론 결과 요약 생성 실패: {str(e)}")
 
             elements.append(Spacer(1, 0.3*inch))
 

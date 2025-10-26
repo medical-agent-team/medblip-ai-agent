@@ -239,28 +239,29 @@ class DoctorAgent:
 
         # 기본 사례 정보
         base_info = f"""
-        환자 사례 (라운드 {round_number})
+        Patient Case (round {round_number})
+        **Patient Information:**
+        - Demographics: {case_context.get('demographics', {})}
+        - Current Symptoms: {case_context.get('symptoms', {})}
+        - Past Medical History: {case_context.get('history', {})}
+        - Medications: {case_context.get('meds', {})}
+        - MedBLIP Findings : {case_context.get('medblip_findings', {})}
 
-        **환자 정보:**
-        - 인구학적 정보: {case_context.get('demographics', {})}
-        - 현재 증상: {case_context.get('symptoms', {})}
-        - 과거 병력: {case_context.get('history', {})}
-        - 복용 약물: {case_context.get('meds', {})}
-        - MedBLIP 소견: {case_context.get('medblip_findings', {})}
+
         """
 
         # 이전 의견
         previous_section = ""
         if previous_opinion:
             previous_section = f"""
-        **나의 이전 의견:**
-        - 가설: {previous_opinion.get('hypotheses', [])}
-        - 진단 검사: {previous_opinion.get('diagnostic_tests', [])}
-        - 근거: {previous_opinion.get('reasoning', '')}
+        **Previous Round's My Opinion:**
+        - hypotheses: {previous_opinion.get('hypotheses', [])}
+        - diagnostic_tests: {previous_opinion.get('diagnostic_tests', [])}
+        - reasoning: {previous_opinion.get('reasoning', '')}
         """
 
         # 동료 의견들
-        peer_section = "\n**동료 의견들:**\n"
+        peer_section = "\n**Other Doctor's Opinion:**\n"
         logger.info(f"🔍 [{self.doctor_id}] 동료 의견 필터링 중...")
         logger.info(f"🔍 [{self.doctor_id}] self.doctor_id: '{self.doctor_id}'")
         logger.info(f"🔍 [{self.doctor_id}] peer_opinions.keys(): {list(peer_opinions.keys())}")
@@ -270,9 +271,9 @@ class DoctorAgent:
             if doctor_id != self.doctor_id:  # 자신의 의견 제외
                 peer_section += f"""
         {doctor_id}:
-        - 가설: {opinion.get('hypotheses', [])}
-        - 진단 검사: {opinion.get('diagnostic_tests', [])}
-        - 근거: {opinion.get('reasoning', '')}
+        - hypotheses: {opinion.get('hypotheses', [])}
+        - diagnostic_tests: {opinion.get('diagnostic_tests', [])}
+        - reasoning: {opinion.get('reasoning', '')}
         """
             else:
                 logger.info(f"🔍 [{self.doctor_id}] ✅ 자신의 의견 제외됨: {doctor_id}")
@@ -281,7 +282,7 @@ class DoctorAgent:
         feedback_section = ""
         if supervisor_feedback:
             feedback_section = f"""
-        **Supervisor 피드백:**
+        **Supervisor feedback:**
         {supervisor_feedback}
         """
 
@@ -291,27 +292,29 @@ class DoctorAgent:
         {peer_section}
         {feedback_section}
 
-        위 정보를 바탕으로 다음을 **반드시 순서대로** 수행해주세요:
+        
+        Based on the above information, please **perform the following steps in order**:
 
-        1. **나의 이전 의견 자기 평가** (필수):
-           - 이전 라운드에서 내가 제시한 진단 가설과 검사의 강점과 약점 분석
-           - 동료들과 비교했을 때 누락된 사항이나 개선이 필요한 부분 파악
-           - 내 의견의 한계점과 불확실성 인정
+        1. **Self-Evaluation of Previous Opinion** (Required):
+           - Analyze the strengths and weaknesses of your previous diagnostic hypotheses and test recommendations.
+           - Identify any missing points or areas for improvement compared with your peers’ opinions.
+           - Acknowledge the limitations and uncertainties of your own reasoning.
 
-        2. **동료 의견 분석:** 각 동료 의사의 의견에 대한 평가와 비판
+        2. **Peer Opinion Analysis:** Evaluate and critique the opinions of other physicians (excluding your own).
 
-        3. **의견 업데이트:** 자기 평가와 동료 피드백을 종합한 업데이트된 의견
+        3. **Opinion Update:** Provide an updated opinion that integrates your self-evaluation and feedback from peers.
 
-        4. **근거 강화:** 업데이트된 의견에 대한 더 강화된 임상적 근거
+        4. **Evidence Reinforcement:** Strengthen the clinical reasoning and evidence supporting your updated opinion.
 
-        5. **합의 가능성:** 동료들과의 합의 가능성 평가
+        5. **Consensus Assessment:** Assess the likelihood of reaching consensus with your peers.
 
-        **업데이트 기준:**
-        - **우선순위 1: 본인 의견의 약점 보완** (자기 평가 결과 반영)
-        - 우선순위 2: 동료 의견의 타당한 부분 수용
-        - 우선순위 3: Supervisor 피드백 반영
-        - 우선순위 4: 추가 고려사항 반영
-        - 모든 판단에서 환자 안전을 최우선 고려
+        **Update Priorities:**
+        - **Priority 1:** Address weaknesses identified in your own previous opinion (from self-evaluation)
+        - **Priority 2:** Incorporate valid points from peer opinions
+        - **Priority 3:** Reflect supervisor feedback
+        - **Priority 4:** Include additional relevant considerations
+        - Always prioritize **patient safety** in every judgment
+        
         """
 
         return prompt

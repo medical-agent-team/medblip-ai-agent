@@ -261,7 +261,12 @@ class DoctorAgent:
 
         # 동료 의견들
         peer_section = "\n**동료 의견들:**\n"
+        logger.info(f"🔍 [{self.doctor_id}] 동료 의견 필터링 중...")
+        logger.info(f"🔍 [{self.doctor_id}] self.doctor_id: '{self.doctor_id}'")
+        logger.info(f"🔍 [{self.doctor_id}] peer_opinions.keys(): {list(peer_opinions.keys())}")
+
         for doctor_id, opinion in peer_opinions.items():
+            logger.info(f"🔍 [{self.doctor_id}] 비교 중: doctor_id='{doctor_id}' vs self.doctor_id='{self.doctor_id}' -> 같음={doctor_id == self.doctor_id}")
             if doctor_id != self.doctor_id:  # 자신의 의견 제외
                 peer_section += f"""
         {doctor_id}:
@@ -269,6 +274,8 @@ class DoctorAgent:
         - 진단 검사: {opinion.get('diagnostic_tests', [])}
         - 근거: {opinion.get('reasoning', '')}
         """
+            else:
+                logger.info(f"🔍 [{self.doctor_id}] ✅ 자신의 의견 제외됨: {doctor_id}")
 
         # Supervisor 피드백
         feedback_section = ""
@@ -284,18 +291,27 @@ class DoctorAgent:
         {peer_section}
         {feedback_section}
 
-        위 정보를 바탕으로 다음을 수행해주세요:
+        위 정보를 바탕으로 다음을 **반드시 순서대로** 수행해주세요:
 
-        1. **동료 의견 분석:** 동료들의 의견에 대한 평가와 비판
-        2. **의견 업데이트:** 새로운 정보와 피드백을 반영한 업데이트된 의견
-        3. **근거 강화:** 업데이트된 의견에 대한 더 강화된 근거
-        4. **합의 가능성:** 동료들과의 합의 가능성 평가
+        1. **나의 이전 의견 자기 평가** (필수):
+           - 이전 라운드에서 내가 제시한 진단 가설과 검사의 강점과 약점 분석
+           - 동료들과 비교했을 때 누락된 사항이나 개선이 필요한 부분 파악
+           - 내 의견의 한계점과 불확실성 인정
+
+        2. **동료 의견 분석:** 각 동료 의사의 의견에 대한 평가와 비판
+
+        3. **의견 업데이트:** 자기 평가와 동료 피드백을 종합한 업데이트된 의견
+
+        4. **근거 강화:** 업데이트된 의견에 대한 더 강화된 임상적 근거
+
+        5. **합의 가능성:** 동료들과의 합의 가능성 평가
 
         **업데이트 기준:**
-        - 동료 의견의 타당한 부분 수용
-        - 본인 의견의 약점 보완
-        - 추가 고려사항 반영
-        - 환자 안전 최우선 고려
+        - **우선순위 1: 본인 의견의 약점 보완** (자기 평가 결과 반영)
+        - 우선순위 2: 동료 의견의 타당한 부분 수용
+        - 우선순위 3: Supervisor 피드백 반영
+        - 우선순위 4: 추가 고려사항 반영
+        - 모든 판단에서 환자 안전을 최우선 고려
         """
 
         return prompt

@@ -1,8 +1,9 @@
 import os
 from typing import Dict, Any, Optional
 from langchain.chat_models.base import BaseChatModel
-from langchain_openai import ChatOpenAI
 
+from app.core.llm_factory import get_llm_for_agent
+from app.core.observability import get_callbacks
 from .prompts.prompt import ORCHESTRATOR_AGENT_PROMPT, RADIOLOGY_ANALYSIS_PROMPT
 
 
@@ -10,13 +11,14 @@ class OrchestratorAgent:
     def __init__(self, llm: Optional[BaseChatModel] = None):
         if llm is None:
             api_key = os.getenv("OPENAI_API_KEY")
-            if api_key:
-                self.llm = ChatOpenAI(
+            try:
+                callbacks = get_callbacks()
+                self.llm = get_llm_for_agent(
+                    agent_type="generic",
                     api_key=api_key,
-                    model=os.getenv("OPENAI_MODEL", "gpt-3.5-turbo"),
-                    temperature=0.7,
+                    callbacks=callbacks
                 )
-            else:
+            except Exception:
                 self.llm = None
         else:
             self.llm = llm

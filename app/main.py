@@ -22,9 +22,9 @@ import io
 # Load environment variables
 load_dotenv()
 
-# Enable LangChain verbose logging
-os.environ["LANGCHAIN_VERBOSE"] = "true"
-os.environ["LANGCHAIN_TRACING_V2"] = "false"
+# Configure observability (Langfuse, LangChain logging, etc.)
+from app.core.observability import configure_langchain_tracing
+configure_langchain_tracing()
 
 # Set up basic logging for agent outputs
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')

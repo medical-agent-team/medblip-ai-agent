@@ -8,10 +8,12 @@ from typing import Dict, Any
 from .prompts.prompt import RADIOLOGY_ANALYSIS_PROMPT
 
 try:
-    # Lazy import: only available when OPENAI_API_KEY is set
-    from langchain_openai import ChatOpenAI  # type: ignore
+    # Use centralized LLM factory with vLLM/Langfuse support
+    from app.core.llm_factory import get_llm_for_agent
+    from app.core.observability import get_callbacks
+    LLM_AVAILABLE = True
 except Exception:  # pragma: no cover - optional dependency path
-    ChatOpenAI = None  # type: ignore
+    LLM_AVAILABLE = False
 
 
 class RadiologyAnalysisAgent:
@@ -25,14 +27,16 @@ class RadiologyAnalysisAgent:
         api_key = os.getenv("OPENAI_API_KEY")
         self.prompt = RADIOLOGY_ANALYSIS_PROMPT
 
-        if api_key and ChatOpenAI is not None:
-            # Prefer lighter model by default unless overridden via env
-            model_name = os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")
-            self.llm = ChatOpenAI(
-                api_key=api_key,
-                model=model_name,
-                temperature=0.3,
-            )
+        if LLM_AVAILABLE:
+            try:
+                callbacks = get_callbacks()
+                self.llm = get_llm_for_agent(
+                    agent_type="radiology",
+                    api_key=api_key,
+                    callbacks=callbacks
+                )
+            except Exception:
+                self.llm = None
         else:
             self.llm = None
     

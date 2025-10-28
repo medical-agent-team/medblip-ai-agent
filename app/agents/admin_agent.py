@@ -15,8 +15,9 @@ import logging
 from typing import Dict, Any, Optional
 from PIL import Image
 from langchain_core.messages import HumanMessage
-from langchain_openai import ChatOpenAI
 
+from app.core.llm_factory import get_llm_for_agent
+from app.core.observability import get_callbacks
 from app.agents.conversation_manager import CaseContext, PatientSummary
 from app.agents.admin_workflow import AdminWorkflow, AdminWorkflowState
 from app.tools.medblip_tool import MedBLIPTool
@@ -49,17 +50,20 @@ class AdminAgent:
 
         self.api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
 
-        # LLM 초기화 (환자 친화적 재작성용)
-        if self.api_key:
-            logger.info("🔑 OpenAI API 키 발견 - LLM 초기화 중")
-            self.llm = ChatOpenAI(
+        # LLM 초기화 (환자 친화적 재작성용) - vLLM/Langfuse 지원
+        try:
+            logger.info("🔑 LLM 초기화 중 (vLLM endpoint: {})".format(
+                os.getenv("OPENAI_API_BASE", "OpenAI API")
+            ))
+            callbacks = get_callbacks()
+            self.llm = get_llm_for_agent(
+                agent_type="admin",
                 api_key=self.api_key,
-                model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
-                temperature=0.7
+                callbacks=callbacks
             )
-            logger.info("✅ OpenAI LLM 초기화 완료")
-        else:
-            logger.warning("⚠️ OpenAI API 키 없음 - 오프라인 모드로 동작")
+            logger.info("✅ LLM 초기화 완료 (Langfuse callbacks: {})".format(len(callbacks)))
+        except Exception as e:
+            logger.warning(f"⚠️ LLM 초기화 실패: {e} - 오프라인 모드로 동작")
             self.llm = None
 
         # MedBLIP 도구 초기화

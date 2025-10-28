@@ -13,8 +13,9 @@ import os
 import logging
 from typing import Dict, Any, List, Optional
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_openai import ChatOpenAI
 
+from app.core.llm_factory import get_llm_for_agent
+from app.core.observability import get_callbacks
 from app.agents.conversation_manager import (
     CaseContext, DoctorOpinion, SupervisorDecision,
     ConversationManager, SessionState
@@ -43,16 +44,15 @@ class SupervisorAgent:
 
         self.api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
 
-        if not self.api_key:
-            raise ValueError("OpenAI API 키가 필요합니다")
-
-        # LLM 초기화
-        logger.info("🔑 OpenAI LLM 초기화 중")
-        self.llm = ChatOpenAI(
+        # LLM 초기화 - vLLM/Langfuse 지원
+        logger.info(f"🔑 LLM 초기화 중 (endpoint: {os.getenv('OPENAI_API_BASE', 'OpenAI API')})")
+        callbacks = get_callbacks()
+        self.llm = get_llm_for_agent(
+            agent_type="supervisor",
             api_key=self.api_key,
-            model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
-            temperature=0.3  # 일관성을 위해 낮은 온도
+            callbacks=callbacks
         )
+        logger.info(f"✅ LLM 초기화 완료 (Langfuse: {len(callbacks)} callbacks)")
 
         # ConversationManager 초기화 (7라운드로 변경)
         self.conversation_manager = ConversationManager(max_rounds=7)

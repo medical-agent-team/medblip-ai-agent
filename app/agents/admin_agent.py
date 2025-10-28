@@ -393,7 +393,7 @@ class AdminAgent:
 
         Provide the translation in the following format:
 
-        **상담 결과 요약**
+        **토론 결과 요약**
         [Patient-friendly summary in Korean]
 
         **권장 사항**

@@ -66,7 +66,7 @@ Rewriting Principles:
 7. Alleviate patient concerns while emphasizing importance
 
 Output Format:
-**Consultation Results Summary**
+**Debates Results Summary**
 [Easy-to-understand summary for patient]
 
 **Recommendations**

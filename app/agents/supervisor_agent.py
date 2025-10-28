@@ -138,6 +138,10 @@ class SupervisorAgent:
             doctor_id = f"doctor_{i+1}"
             logger.info(f"🩺 {doctor_id} 의견 수집 중...")
 
+            # Debug: Log peer_opinions keys being passed to this doctor
+            logger.info(f"🔍 [{doctor_id}] peer_opinions keys: {list(previous_opinions.keys())}")
+            logger.info(f"🔍 [{doctor_id}] doctor.doctor_id: {doctor.doctor_id}")
+
             try:
                 opinion = doctor.provide_opinion(
                     case_context=case_context,

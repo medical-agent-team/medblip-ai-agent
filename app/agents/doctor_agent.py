@@ -200,31 +200,31 @@ class DoctorAgent:
         """초기 분석을 위한 프롬프트 구성"""
 
         prompt = f"""
-        환자 사례 분석
+                Patient Case Analysis
 
-        **환자 정보:**
-        - 인구학적 정보: {case_context.get('demographics', {})}
-        - 현재 증상: {case_context.get('symptoms', {})}
-        - 과거 병력: {case_context.get('history', {})}
-        - 복용 약물: {case_context.get('meds', {})}
-        - 활력 징후: {case_context.get('vitals', {})}
+        **Patient Information:**
+        - Demographics: {case_context.get('demographics', {})}
+        - Current Symptoms: {case_context.get('symptoms', {})}
+        - Past Medical History: {case_context.get('history', {})}
+        - Medications: {case_context.get('meds', {})}
+        - Vital Signs: {case_context.get('vitals', {})}
 
-        **영상 소견 (MedBLIP 분석):**
+        **Imaging Findings (MedBLIP Analysis):**
         {case_context.get('medblip_findings', {})}
 
-        **추가 정보:**
+        **Additional Information:**
         {case_context.get('free_text', '')}
 
-        위 정보를 바탕으로 다음을 제공해주세요:
-        1. 가능한 진단 가설들 (우선순위순)
-        2. 권장되는 진단 검사들 (우선순위순)
-        3. 임상적 추론 과정
-        4. 주요 고려사항 및 감별 진단
+        Based on the above information, please provide:
+        1. Possible diagnostic hypotheses (in order of priority)
+        2. Recommended diagnostic tests (in order of priority)
+        3. Clinical reasoning process
+        4. Key considerations and differential diagnoses
 
-        **중요:**
-        - 확정적 진단이 아닌 가설로 제시
-        - 환자 안전을 최우선 고려
-        - 추가 검사의 필요성 강조
+        **Important:**
+        - Provide hypotheses, not definitive diagnoses
+        - Prioritize patient safety
+        - Emphasize the need for additional testing
         """
 
         return prompt
@@ -239,42 +239,50 @@ class DoctorAgent:
 
         # 기본 사례 정보
         base_info = f"""
-        환자 사례 (라운드 {round_number})
+        Patient Case (round {round_number})
+        **Patient Information:**
+        - Demographics: {case_context.get('demographics', {})}
+        - Current Symptoms: {case_context.get('symptoms', {})}
+        - Past Medical History: {case_context.get('history', {})}
+        - Medications: {case_context.get('meds', {})}
+        - MedBLIP Findings : {case_context.get('medblip_findings', {})}
 
-        **환자 정보:**
-        - 인구학적 정보: {case_context.get('demographics', {})}
-        - 현재 증상: {case_context.get('symptoms', {})}
-        - 과거 병력: {case_context.get('history', {})}
-        - 복용 약물: {case_context.get('meds', {})}
-        - MedBLIP 소견: {case_context.get('medblip_findings', {})}
+
         """
 
         # 이전 의견
         previous_section = ""
         if previous_opinion:
             previous_section = f"""
-        **나의 이전 의견:**
-        - 가설: {previous_opinion.get('hypotheses', [])}
-        - 진단 검사: {previous_opinion.get('diagnostic_tests', [])}
-        - 근거: {previous_opinion.get('reasoning', '')}
+        **Previous Round's My Opinion:**
+        - hypotheses: {previous_opinion.get('hypotheses', [])}
+        - diagnostic_tests: {previous_opinion.get('diagnostic_tests', [])}
+        - reasoning: {previous_opinion.get('reasoning', '')}
         """
 
         # 동료 의견들
-        peer_section = "\n**동료 의견들:**\n"
+        peer_section = "\n**Other Doctor's Opinion:**\n"
+        logger.info(f"🔍 [{self.doctor_id}] 동료 의견 필터링 중...")
+        logger.info(f"🔍 [{self.doctor_id}] self.doctor_id: '{self.doctor_id}'")
+        logger.info(f"🔍 [{self.doctor_id}] peer_opinions.keys(): {list(peer_opinions.keys())}")
+
         for doctor_id, opinion in peer_opinions.items():
+            logger.info(f"🔍 [{self.doctor_id}] 비교 중: doctor_id='{doctor_id}' vs self.doctor_id='{self.doctor_id}' -> 같음={doctor_id == self.doctor_id}")
             if doctor_id != self.doctor_id:  # 자신의 의견 제외
                 peer_section += f"""
         {doctor_id}:
-        - 가설: {opinion.get('hypotheses', [])}
-        - 진단 검사: {opinion.get('diagnostic_tests', [])}
-        - 근거: {opinion.get('reasoning', '')}
+        - hypotheses: {opinion.get('hypotheses', [])}
+        - diagnostic_tests: {opinion.get('diagnostic_tests', [])}
+        - reasoning: {opinion.get('reasoning', '')}
         """
+            else:
+                logger.info(f"🔍 [{self.doctor_id}] ✅ 자신의 의견 제외됨: {doctor_id}")
 
         # Supervisor 피드백
         feedback_section = ""
         if supervisor_feedback:
             feedback_section = f"""
-        **Supervisor 피드백:**
+        **Supervisor feedback:**
         {supervisor_feedback}
         """
 
@@ -284,18 +292,29 @@ class DoctorAgent:
         {peer_section}
         {feedback_section}
 
-        위 정보를 바탕으로 다음을 수행해주세요:
+        
+        Based on the above information, please **perform the following steps in order**:
 
-        1. **동료 의견 분석:** 동료들의 의견에 대한 평가와 비판
-        2. **의견 업데이트:** 새로운 정보와 피드백을 반영한 업데이트된 의견
-        3. **근거 강화:** 업데이트된 의견에 대한 더 강화된 근거
-        4. **합의 가능성:** 동료들과의 합의 가능성 평가
+        1. **Self-Evaluation of Previous Opinion** (Required):
+           - Analyze the strengths and weaknesses of your previous diagnostic hypotheses and test recommendations.
+           - Identify any missing points or areas for improvement compared with your peers’ opinions.
+           - Acknowledge the limitations and uncertainties of your own reasoning.
 
-        **업데이트 기준:**
-        - 동료 의견의 타당한 부분 수용
-        - 본인 의견의 약점 보완
-        - 추가 고려사항 반영
-        - 환자 안전 최우선 고려
+        2. **Peer Opinion Analysis:** Evaluate and critique the opinions of other physicians (excluding your own).
+
+        3. **Opinion Update:** Provide an updated opinion that integrates your self-evaluation and feedback from peers.
+
+        4. **Evidence Reinforcement:** Strengthen the clinical reasoning and evidence supporting your updated opinion.
+
+        5. **Consensus Assessment:** Assess the likelihood of reaching consensus with your peers.
+
+        **Update Priorities:**
+        - **Priority 1:** Address weaknesses identified in your own previous opinion (from self-evaluation)
+        - **Priority 2:** Incorporate valid points from peer opinions
+        - **Priority 3:** Reflect supervisor feedback
+        - **Priority 4:** Include additional relevant considerations
+        - Always prioritize **patient safety** in every judgment
+        
         """
 
         return prompt

@@ -1,0 +1,32 @@
+version: "3.9"
+
+services:
+  vllm-20b:
+    image: vllm/vllm-openai:latest
+    container_name: vllm-20b
+    runtime: nvidia
+    environment:
+      # 6,7번 GPU만 컨테이너에 노출
+      NVIDIA_VISIBLE_DEVICES: "6,7"
+      NVIDIA_DRIVER_CAPABILITIES: "compute,utility"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+              device_ids: ["6","7"]
+    ipc: host
+    ports:
+      - "9020:8000"
+    volumes:
+      - ./models:/models
+    command:
+      - --model
+      - /models/gpt-oss-20b
+      - --tensor-parallel-size
+      - "2"
+      - --gpu-memory-utilization
+      - "0.90"
+      - --max-model-len
+      - "8192"
+

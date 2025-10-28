@@ -1,0 +1,127 @@
+name: langfuse-ports-9011-9019
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: lf-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "9011:5432"     # PostgreSQL
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.8
+    container_name: lf-clickhouse
+    restart: unless-stopped
+    environment:
+      CLICKHOUSE_DB: ${CLICKHOUSE_DB}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--host=localhost", "--user=${CLICKHOUSE_USER}", "--password=${CLICKHOUSE_PASSWORD}", "--query=SELECT 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 60
+    volumes:
+      - chdata:/var/lib/clickhouse
+    ports:
+      - "9012:8123"     # ClickHouse HTTP
+      - "9013:9000"     # ClickHouse TCP
+
+  redis:
+    image: redis:7
+    container_name: lf-redis
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "langfuse"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "langfuse", "PING"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    volumes:
+      - redisdata:/data
+    ports:
+      - "9014:6379"     # Redis
+
+  # === 로컬 S3 대체: MinIO (외부 포트 9015, 9016만 사용) ===
+  minio:
+    image: minio/minio:latest
+    container_name: lf-minio
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio123
+    restart: unless-stopped
+    volumes:
+      - miniodata:/data
+    ports:
+      - "9015:9000"  # S3 API
+      - "9016:9001"  # MinIO 콘솔
+
+  createbuckets:
+    image: minio/mc:latest
+    container_name: lf-minio-init
+    depends_on:
+      minio:
+        condition: service_started
+    # alias 없이도 접근 가능한 환경변수 (mc 전용)
+    environment:
+      MC_HOST_local: http://minio:minio123@minio:9000
+    # 한 번만 실행하고 끝남 (버킷 존재 시 무시)
+    command: ["mb", "--ignore-existing", "local/langfuse-events"]
+    restart: "no"
+
+  web:
+    image: langfuse/langfuse:3
+    container_name: lf-web
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PORT: 3000
+      LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse-events
+      LANGFUSE_S3_EVENT_UPLOAD_REGION: us-east-1
+      LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://minio:9000
+      LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: minio
+      LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: minio123
+      LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: "true"
+    depends_on:
+      postgres: { condition: service_healthy }
+      clickhouse: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      createbuckets: { condition: service_completed_successfully }
+    ports:
+      - "9019:3000"
+
+  worker:
+    image: langfuse/langfuse-worker:3
+    container_name: lf-worker
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse-events
+      LANGFUSE_S3_EVENT_UPLOAD_REGION: us-east-1
+      LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://minio:9000
+      LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: minio
+      LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: minio123
+      LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: "true"
+    depends_on:
+      postgres: { condition: service_healthy }
+      clickhouse: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      createbuckets: { condition: service_completed_successfully }
+
+volumes:
+  pgdata:
+  chdata:
+  redisdata:
+  miniodata:

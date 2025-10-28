@@ -1,4 +1,5 @@
 .env
+langfuse/.env
 .venv
 *.zip
 CLAUDE.md

@@ -68,6 +68,10 @@ Consensus is recognized only when all of the following conditions are met:
 [Output Format]
 Respond in the following structure:
 
+<Length Constraints>
+- Keep the entire response under 600 words.
+- Limit each bullet or numbered list to at most 3 items unless strict consensus evidence requires more.
+
 **Consensus Analysis**
 - Agreed Opinions: [Major points Doctors agree on]
 - Conflicting Opinions: [Points of disagreement and reasons]

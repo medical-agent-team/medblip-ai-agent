@@ -14,6 +14,7 @@ def get_llm(
     model: Optional[str] = None,
     api_key: Optional[str] = None,
     callbacks: Optional[List[BaseCallbackHandler]] = None,
+    max_tokens: int = 1024,
     **kwargs
 ) -> ChatOpenAI:
     """
@@ -51,6 +52,7 @@ def get_llm(
         base_url=base_url,
         model=resolved_model,
         temperature=temperature,
+        max_tokens=max_tokens,
         callbacks=resolved_callbacks,
         **kwargs
     )
@@ -83,10 +85,20 @@ def get_llm_for_agent(
         "generic": 0.7,     # Default for generic agent
     }
 
+    max_tokens_map = {
+        "admin": 4096,
+        "doctor": 700,
+        "supervisor": 600,
+        "radiology": 1024,
+        "generic": 1024,
+    }
+
     temperature = temperature_map.get(agent_type, 0.7)
+    max_tokens = max_tokens_map.get(agent_type, 1024)
 
     return get_llm(
         temperature=temperature,
+        max_tokens=max_tokens,
         api_key=api_key,
         callbacks=callbacks
     )

@@ -40,6 +40,10 @@ As a member of the medical AI multi-agent system, you provide comprehensive medi
 [Output Format]
 Respond in the following structure:
 
+<Length Constraints>
+- Keep total response under 700 words.
+- Limit each numbered or bulleted list to at most 3 items unless medically necessary.
+
 **Diagnostic Hypotheses** (in priority order)
 1. [Most likely diagnosis]
 2. [Second possibility]
@@ -98,6 +102,10 @@ In round {round_number}, you are reviewing colleague doctors' opinions and updat
 
 [Output Format]
 Respond in the following structure:
+
+<Length Constraints>
+- Keep total response under 700 words.
+- Limit each numbered or bulleted list to at most 3 items unless medically necessary.
 
 **Colleague Opinion Evaluation**
 

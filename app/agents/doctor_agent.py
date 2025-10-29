@@ -132,13 +132,20 @@ class DoctorAgent:
         analysis_prompt = self._build_initial_analysis_prompt(case_context)
 
         # LLM을 통한 의견 생성
-        response = self.llm.invoke([
+        messages = [
             SystemMessage(content=DOCTOR_ANALYSIS_PROMPT.format(
                 doctor_id=self.doctor_id,
                 specialty=self.specialty
             )),
             HumanMessage(content=analysis_prompt)
-        ])
+        ]
+        response = self.llm.invoke(messages)
+
+        response = self._ensure_valid_response(
+            base_messages=messages,
+            response=response,
+            context=f"{self.doctor_id}-round{round_number}-initial"
+        )
 
         # Log doctor output
         logger.info(f"🩺 [{self.doctor_id}] 라운드 {round_number} 초기 분석 결과:")
@@ -172,14 +179,21 @@ class DoctorAgent:
         )
 
         # LLM을 통한 업데이트된 의견 생성
-        response = self.llm.invoke([
+        messages = [
             SystemMessage(content=DOCTOR_CRITIQUE_PROMPT.format(
                 doctor_id=self.doctor_id,
                 specialty=self.specialty,
                 round_number=round_number
             )),
             HumanMessage(content=update_prompt)
-        ])
+        ]
+        response = self.llm.invoke(messages)
+
+        response = self._ensure_valid_response(
+            base_messages=messages,
+            response=response,
+            context=f"{self.doctor_id}-round{round_number}-update"
+        )
 
         # Log doctor output for update
         logger.info(f"🔄 [{self.doctor_id}] 라운드 {round_number} 업데이트 분석 결과:")
@@ -384,6 +398,58 @@ class DoctorAgent:
                 reasoning=f"응답 파싱 중 오류 발생: {str(e)}",
                 critique_of_peers=""
             )
+
+    def _ensure_valid_response(self,
+                               base_messages: List[SystemMessage | HumanMessage],
+                               response: Any,
+                               context: str):
+        """Ensure the response has content; retry once with continuation prompt if truncated."""
+        if getattr(response, "content", None):
+            return response
+
+        self._log_empty_response_debug(response, context=context)
+
+        metadata = getattr(response, "response_metadata", {}) or {}
+        finish_reason = metadata.get("finish_reason")
+        if finish_reason == "length":
+            logger.warning(f"🔁 [{context}] Retrying LLM call due to truncation (finish_reason=length)")
+            continuation_messages = base_messages + [
+                HumanMessage(content=(
+                    "Continue the previous response from where you stopped. "
+                    "Provide the required sections concisely within the stated output limits."
+                ))
+            ]
+            retry_response = self.llm.invoke(continuation_messages)
+            if getattr(retry_response, "content", None):
+                logger.info(f"✅ [{context}] Retry succeeded")
+                return retry_response
+            self._log_empty_response_debug(retry_response, context=f"{context}-retry")
+            raise RuntimeError("LLM returned empty content after retry.")
+
+        raise RuntimeError("LLM returned empty content without truncation metadata.")
+
+    def _log_empty_response_debug(self, response: Any, context: str) -> None:
+        """빈 응답 수신 시 디버그 정보 출력"""
+        try:
+            message_dict = None
+            try:
+                from langchain_core.messages import message_to_dict  # type: ignore
+            except Exception:  # pragma: no cover - best effort import
+                message_to_dict = None  # type: ignore
+
+            logger.warning(f"⚠️ [{context}] Empty LLM content detected")
+            if hasattr(response, "response_metadata"):
+                logger.warning(f"⚙️ [{context}] response_metadata: {getattr(response, 'response_metadata', {})}")
+            if hasattr(response, "additional_kwargs"):
+                logger.warning(f"⚙️ [{context}] additional_kwargs: {getattr(response, 'additional_kwargs', {})}")
+            if hasattr(response, "usage_metadata"):
+                logger.warning(f"⚙️ [{context}] usage_metadata: {getattr(response, 'usage_metadata', {})}")
+            if message_to_dict:
+                message_dict = message_to_dict(response)
+            if message_dict:
+                logger.warning(f"📦 [{context}] message_dict: {message_dict}")
+        except Exception as debug_error:
+            logger.error(f"🛑 Failed to log empty LLM response for {context}: {debug_error}")
 
     def _get_previous_opinion(self) -> Optional[DoctorOpinion]:
         """이전 라운드의 의견 반환"""

@@ -39,10 +39,11 @@ class SupervisorAgent:
     - 합의에 도달하면 조기 종료
     """
 
-    def __init__(self, openai_api_key: Optional[str] = None):
+    def __init__(self, openai_api_key: Optional[str] = None, max_rounds: int = 7):
         logger.info("🎯 SupervisorAgent 초기화 시작")
 
         self.api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
+        self.max_rounds = max_rounds
 
         # LLM 초기화 - vLLM/Langfuse 지원
         logger.info(f"🔑 LLM 초기화 중 (endpoint: {os.getenv('OPENAI_API_BASE', 'OpenAI API')})")
@@ -54,10 +55,10 @@ class SupervisorAgent:
         )
         logger.info(f"✅ LLM 초기화 완료 (Langfuse: {len(callbacks)} callbacks)")
 
-        # ConversationManager 초기화 (7라운드로 변경)
-        self.conversation_manager = ConversationManager(max_rounds=7)
+        # ConversationManager 초기화 (사용자 지정 max_rounds 적용)
+        self.conversation_manager = ConversationManager(max_rounds=self.max_rounds)
 
-        logger.info("✅ SupervisorAgent 초기화 완료")
+        logger.info(f"✅ SupervisorAgent 초기화 완료 (max_rounds={self.max_rounds})")
 
     def start_deliberation(self,
                           session_id: str,
@@ -83,7 +84,7 @@ class SupervisorAgent:
         session_state = self.conversation_manager.start_session(session_id, case_context)
 
         try:
-            # 정확히 7라운드까지 반복 (조기 종료 없음)
+            # 정확히 self.max_rounds 라운드까지 반복 (조기 종료 없음)
             while not session_state.terminated and session_state.current_round < session_state.max_rounds:
                 logger.info(f"🔄 라운드 {session_state.current_round + 1} 시작")
 
@@ -100,7 +101,7 @@ class SupervisorAgent:
                     session_id, case_context, doctor_opinions, round_number
                 )
 
-                # 조기 종료 로직 주석 처리 - 무조건 7라운드 실행
+                # 조기 종료 로직 주석 처리 - 무조건 self.max_rounds 라운드 실행
                 # if self.conversation_manager.reached_consensus(session_id):
                 #     logger.info("✅ 합의 도달 - 심의 종료")
                 #     self.conversation_manager.end_session(session_id, "합의 도달")
@@ -110,8 +111,8 @@ class SupervisorAgent:
                 session_state = self.conversation_manager.get_session(session_id)
 
             if not session_state.terminated:
-                logger.info("⏰ 7라운드 완료 - 심의 종료")
-                self.conversation_manager.end_session(session_id, "7라운드 완료")
+                logger.info(f"⏰ {self.max_rounds}라운드 완료 - 심의 종료")
+                self.conversation_manager.end_session(session_id, f"{self.max_rounds}라운드 완료")
 
             return self._format_deliberation_result(session_id)
 

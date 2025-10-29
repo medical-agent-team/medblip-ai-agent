@@ -349,18 +349,14 @@ class DoctorAgent:
 
             # 키워드 기반 정보 추출
             current_section = None
-            hypothesis_markers = ['가설', '진단', '후보', '가능성', 'diagnostic hypotheses', 'integrated hypothesis']
-            test_markers = ['검사', '진단검사', '추가검사', 'recommended diagnostic tests', 'priority tests']
-            critique_markers = ['동료', '의견', '비판', '평가', 'colleague', 'peer critique', 'critique']
-
             for line in lines:
                 line_lower = line.lower()
 
-                if any(keyword in line_lower for keyword in hypothesis_markers):
+                if any(keyword in line_lower for keyword in ['가설', '진단', '후보', '가능성']):
                     current_section = 'hypotheses'
-                elif any(keyword in line_lower for keyword in test_markers):
+                elif any(keyword in line_lower for keyword in ['검사', '진단검사', '추가검사']):
                     current_section = 'tests'
-                elif any(keyword in line_lower for keyword in critique_markers):
+                elif any(keyword in line_lower for keyword in ['동료', '의견', '비판', '평가']):
                     current_section = 'critique'
 
                 # 목록 항목 추출 (-, *, 1., 2. 등)
@@ -373,7 +369,7 @@ class DoctorAgent:
 
             # 동료 비판 추출 (업데이트 라운드인 경우)
             if is_update:
-                critique_keywords = ['동료', '의견', '평가', '비판', '분석', 'colleague', 'evaluation', 'critique']
+                critique_keywords = ['동료', '의견', '평가', '비판', '분석']
                 critique_lines = []
                 for line in lines:
                     if any(keyword in line for keyword in critique_keywords):
